@@ -170,6 +170,7 @@ export class FlowyDiagram extends LitElement {
     beginDrag!: (event: any) => void
     endDrag!: (event: any) => void
     moveBlock!: (event: any) => void
+    touchblock!: (event: any) => void
     addBlock!:( block?:AddBlockArgs ) => void
 
     #dragBlockValue!: () => number
@@ -737,7 +738,7 @@ export class FlowyDiagram extends LitElement {
                 checkOffset();
             }
 
-            function touchblock(event: any) {
+            this.touchblock = (event: any) => {
                 dragblock = false;
                 if (hasParentClass(event.target, "block")) {
                     let theblock = event.target.closest(".block");
@@ -980,11 +981,11 @@ export class FlowyDiagram extends LitElement {
             }
 
             document.addEventListener("mousedown", this.beginDrag);
-            document.addEventListener("mousedown", touchblock, false);
+            document.addEventListener("mousedown", this.touchblock, false);
             document.addEventListener("touchstart", this.beginDrag);
-            document.addEventListener("touchstart", touchblock, false);
+            document.addEventListener("touchstart", this.touchblock, false);
 
-            document.addEventListener("mouseup", touchblock, false);
+            document.addEventListener("mouseup", this.touchblock, false);
             document.addEventListener("mousemove", this.moveBlock, false);
             document.addEventListener("touchmove", this.moveBlock, false);
 
