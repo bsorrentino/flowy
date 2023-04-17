@@ -135,7 +135,7 @@ export interface FlowyDiagram extends HTMLElement {
 /**
  * FlowyDiagram a webcomponent containing a canvas to manage diagram drawing
  * 
- * @Tag <flowy-diagram>
+ * @tag &lt;flowy-diagram&gt;
  */
 @customElement('flowy-diagram')
 export class FlowyDiagram extends LitElement {

@@ -6,6 +6,7 @@
   "scripts": {
     "start": "lerna run start",
     "build": "lerna run build",
+    "doc": "lerna run doc",
     "demo": "http-server packages/demo -c-1"
   },
   "keywords": [],
