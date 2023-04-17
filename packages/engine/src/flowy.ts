@@ -132,6 +132,11 @@ export interface FlowyDiagram extends HTMLElement {
     addEventListener(type: string, listener: EventListener | EventListenerObject, useCapture?: boolean): void
 }
 
+/**
+ * FlowyDiagram a webcomponent containing a canvas to manage diagram drawing
+ * 
+ * @Tag <flowy-diagram>
+ */
 @customElement('flowy-diagram')
 export class FlowyDiagram extends LitElement {
 
@@ -579,10 +584,13 @@ export class FlowyDiagram extends LitElement {
                
                 let el:HTMLElement 
                 
+                const sourceId = `block${_source_block.id}`
+                drag.setAttribute( 'parent', sourceId )
+
                 if (x < 0) {
 
                     el = createOrUpdateArrow(_target_block_id, 5, y, paddingy, _source_block.x - arrow.x + 5 ) 
-                    el.setAttribute( "source", `block${_source_block.id}`)
+                    el.setAttribute( "source", sourceId)
                     el.setAttribute( "target", `block${_target_block_id}`)
                     canvas_div.appendChild(el)
                     el.style.left = `${arrow.x - 5 - adjustment}px`
@@ -590,7 +598,7 @@ export class FlowyDiagram extends LitElement {
                 } else {
 
                     el = createOrUpdateArrow(_target_block_id, x, y, paddingy)
-                    el.setAttribute( "source", `block${_source_block.id}`)
+                    el.setAttribute( "source", sourceId)
                     el.setAttribute( "target", `block${_target_block_id}`)
                     canvas_div.appendChild(el)
                     el.style.left = `${_source_block.x - 20 - adjustment}px`
