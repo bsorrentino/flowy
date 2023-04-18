@@ -7,7 +7,7 @@
   "module": "dist/flowy.js",
   "types": "dist/flowy.d.ts",
   "scripts": {
-    "doc": "typedoc src/flowy.ts --out ../../docs/engine",
+    "doc": "typedoc src/flowy.ts --excludePrivate --excludeProtected --theme default --out ../../docs/engine",
     "build": "parcel build src/flowy.ts --no-source-maps",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
