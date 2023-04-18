@@ -116,21 +116,22 @@ export interface FlowyDiagram extends HTMLElement {
      */
     addEventListener(type: 'sheetClosed', listener: (ev: CustomEvent<HTMLElement>) => void, capture?: boolean): void
     /**
-     * event raised when a block's is dropped.
+     * event raised when a block is dropped from template.
      *  
-     * it is a cancellable event, if call preventDefault() drag is cancelled  
+     * it is a cancellable event, a call to "preventDefault()" cancel dropping block 
      * 
      * @param type 'snapping'
-     * @param listener (ev: CustomEvent<HTMLElement>) => void
+     * @param listener 
      * @param capture 
      */
     addEventListener(type: 'snapping', listener: (ev: CustomEvent<{ target:HTMLElement, parent?: HTMLElement }>) => void, capture?: boolean): void
     /**
+     * event raised when a block is dropped after moving over diagram.
      * 
-     * it is a cancellable event, if call preventDefault() arranged is cancelled  
+     * it is a cancellable event. A call to "preventDefault()" cancel dropping block  
      * 
-     * @param type 'rearranged'
-     * @param listener (ev: CustomEvent<HTMLElement>) => void
+     * @param type 'moving'
+     * @param listener 
      * @param capture 
      */
     addEventListener(type: 'moving', listener: (ev: CustomEvent<{ source:HTMLElement, target: number }>) => void, capture?: boolean): void
@@ -168,19 +169,14 @@ export class FlowyDiagram extends LitElement {
     @property( { type: 'number'} )
     spacing_y = 80
 
-    render() {
-        return html`<div id="canvas">`
-    }
-
-    load!: () => void
-    import!: (output: Output) => void
-    output!: () => Output | undefined
-    deleteBlocks!: () => void
-    beginDrag!: (event: any) => void
-    endDrag!: (event: any) => void
-    moveBlock!: (event: any) => void
-    touchblock!: (event: any) => void
-    addBlock!:( block?:AddBlockArgs ) => void
+    private load!: () => void
+    private import!: (output: Output) => void
+    private deleteBlocks!: () => void
+    private beginDrag!: (event: any) => void
+    private endDrag!: (event: any) => void
+    private moveBlock!: (event: any) => void
+    private touchblock!: (event: any) => void
+    private addBlock!:( block?:AddBlockArgs ) => void
 
     #dragBlockValue!: () => number
 
@@ -191,6 +187,11 @@ export class FlowyDiagram extends LitElement {
     #arrowByValue(value: number | string) {
         return document.getElementById( `arrow${value}`) as HTMLElement
     }
+
+    /**
+     * traverse the diagram and generate a JSON representation
+     */
+    output!: () => Output | undefined
   
     /**
      * disable shadow root
@@ -206,7 +207,12 @@ export class FlowyDiagram extends LitElement {
         super.connectedCallback()
     }
 
-    firstUpdated() {
+    protected render() {
+        return html`<div id="canvas">`
+    }
+
+
+    protected firstUpdated() {
 
         let loaded = false;
         this.load = () => {
@@ -283,7 +289,6 @@ export class FlowyDiagram extends LitElement {
             this.import = output => {
                 canvas_div.innerHTML = output.html;
                 for (let a = 0; a < output.blockarr.length; a++) {
-
                     this.addBlock( output.blockarr[a] )
                 }
                 if (blocks.length > 1) {
