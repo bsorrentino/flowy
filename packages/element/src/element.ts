@@ -27,6 +27,22 @@ const dropdown_img = new URL('../assets/dropdown.svg', import.meta.url)
 const checkon_img = new URL('../assets/checkon.svg', import.meta.url)
 const checkoff_img = new URL('../assets/checkoff.svg', import.meta.url)
 
+function isBlockAlreadyLinked( diagram:FlowyDiagram, id:string|number  ) {
+
+    let blockId:string =  ( typeof(id) == 'number' ) ?  `block${id}` : id
+
+    // const selector = `div[parent='${blockId}']`
+    const selector = `.arrowblock[source='${blockId}']`
+    const e = diagram.querySelector( selector )
+
+    if( e ) {
+        console.debug( `reject link to element (${blockId})` )
+        return true
+    }
+
+    return false
+
+}
 
 export function initElement( diagram:FlowyDiagram, templates_container:HTMLElement, properties_container:HTMLElement ) {
 
@@ -44,7 +60,7 @@ export function initElement( diagram:FlowyDiagram, templates_container:HTMLEleme
         properties_container.querySelector("#properties")?.classList.remove("expanded")
     }, true )
 
-    diagram.addEventListener( 'blockSelected', (e) => {
+    diagram.addEventListener( 'blockSelected', e => {
         // GUARD
         if( diagram.querySelector( ".selectedblock" ) !== null ) return 
 
@@ -56,12 +72,27 @@ export function initElement( diagram:FlowyDiagram, templates_container:HTMLEleme
 
     }, false )
 
-    diagram.addEventListener( 'snapping',(e) => {
+    diagram.addEventListener( 'snapping', e => {
 
         const { target, parent } = e.detail
-        if( !addElement( diagram, target, parent  ) ) {
+
+        if( parent && isBlockAlreadyLinked( diagram, parent.id )) {
+            e.preventDefault()
+            return
+        }
+
+        addElement( diagram, target, parent  ) 
+
+    }, false )
+
+    diagram.addEventListener( 'moving', e => {
+
+        const { target:id } = e.detail
+
+        if( isBlockAlreadyLinked( diagram, id ) ) {
             e.preventDefault()
         }
+
     }, false )
 
     _addTemplates( templates_container )
@@ -71,17 +102,6 @@ export function initElement( diagram:FlowyDiagram, templates_container:HTMLEleme
 
 
 const addElement = ( diagram:FlowyDiagram, target:HTMLElement, parent?:HTMLElement ) => {
-
-    if( parent ) {
-        const selector = `.arrowblock[source='${parent.id}']`
-        const arrow = diagram.querySelector( selector )
-
-        if( arrow ) {
-            console.debug( `reject link to element (${parent.id})` )
-            return false
-        }
-    
-    }
 
     const grab = target.querySelector(".grabme") 
     grab?.parentElement?.removeChild(grab);

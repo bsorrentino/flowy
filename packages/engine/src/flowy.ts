@@ -133,7 +133,7 @@ export interface FlowyDiagram extends HTMLElement {
      * @param listener (ev: CustomEvent<HTMLElement>) => void
      * @param capture 
      */
-    addEventListener(type: 'rearranged', listener: (ev: CustomEvent<HTMLElement>) => void, capture?: boolean): void
+    addEventListener(type: 'moving', listener: (ev: CustomEvent<{ source:HTMLElement, target: number }>) => void, capture?: boolean): void
     
     addEventListener(type: string, listener: EventListener | EventListenerObject, useCapture?: boolean): void
 }
@@ -621,6 +621,11 @@ export class FlowyDiagram extends LitElement {
                         return
                     }
 
+                    const rejectDrop = () => {
+                        const ii = blocko.indexOf(prevblock)
+                        snap(drag, ii, blocko);
+                    }
+
                     const blocko = blocks.map(a => a.id);
 
                     for (let i = 0; i < blocks.length; i++) {
@@ -630,9 +635,11 @@ export class FlowyDiagram extends LitElement {
                             const b = blocks.find(id => id.id == blocko[i])! 
                             console.assert( b!==undefined, `block ${blocko[i]} not found!` )
 
-                            if (blockMove(drag, b) || true ) {
-                                console.debug( `snap( ${i} )` )
-                                snap(drag, i, blocko);
+                            if (blockMove(drag, b) ) {
+                                 snap(drag, i, blocko);
+                            }
+                            else {
+                                rejectDrop()
                             }
                             break;
                         } 
@@ -647,16 +654,9 @@ export class FlowyDiagram extends LitElement {
                             }
                             else {
                             
-                                const b = blocks.find(id => id.id == blocko[i])! 
-                                console.assert( b!==undefined, `block ${blocko[i]} not found!` )
-
-                                if (blockMove(drag, b) || true) {
-                                    active = false;
-                                    const ii = blocko.indexOf(prevblock)
-                                    console.debug( `snap( ${i}, ${ii} )` )
-                                    snap(drag, ii, blocko);
-                                    break;
-                                }     
+                                active = false;
+                                rejectDrop()
+                                break;
                             }
                             
                         }
@@ -1046,15 +1046,12 @@ export class FlowyDiagram extends LitElement {
             return this.dispatchEvent(event)
         }
         
-        const blockMove = (drag: HTMLElement, parent: Block) => {
-            return false
-/*            
-            const event = new CustomEvent<HTMLElement>('rearranged', {
-                detail: drag,
+        const blockMove = (drag: HTMLElement, target: Block) => {
+            const event = new CustomEvent<{ source:HTMLElement, target: number }>('moving', {
+                detail: { source: drag, target: target.id },
                 cancelable: true
             })
-            return !this.dispatchEvent(event)
-*/  
+            return this.dispatchEvent(event)
         }
 
         this.load();
