@@ -216,32 +216,34 @@ export class FlowyDiagram extends LitElement {
 
         let loaded = false;
         this.load = () => {
-            if (!loaded)
-                loaded = true;
-            else
-                return;
+            // GUARD
+            if (loaded) return 
+
+            loaded = true;
+
+            const { _canvas: canvas_div, spacing_x:paddingx, spacing_y:paddingy } = this;
+
             let blocks = Array<Block>();
             let blockstemp = Array<Block>();
-            let canvas_div = this._canvas;
-            let absx = 0;
-            let absy = 0;
-            if (window.getComputedStyle(canvas_div).position == "absolute" || window.getComputedStyle(canvas_div).position == "fixed") {
-                absx = canvas_div.getBoundingClientRect().left;
-                absy = canvas_div.getBoundingClientRect().top;
-            }
             let active = false;
-            let paddingx = this.spacing_x
-            let paddingy = this.spacing_y
             let offsetleft = 0
             let rearrange = false;
             let drag: HTMLElement
             let dragx: number
             let dragy: number
             let original: HTMLElement;
-            let mouse_x:number, mouse_y:number;
+            let mouse_x:number
+            let mouse_y:number
             let dragblock = false;
-            let prevblock = 0;
-            
+            let prevblock = 0;            
+            let absx = 0;
+            let absy = 0;
+
+            if (window.getComputedStyle(canvas_div).position == "absolute" || window.getComputedStyle(canvas_div).position == "fixed") {
+                absx = canvas_div.getBoundingClientRect().left;
+                absy = canvas_div.getBoundingClientRect().top;
+            }
+
             // indicator
             const el = document.createElement("DIV");
             el.classList.add('indicator');
