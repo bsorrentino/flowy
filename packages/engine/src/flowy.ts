@@ -169,29 +169,123 @@ export class FlowyDiagram extends LitElement {
     @property( { type: 'number'} )
     spacing_y = 80
 
-    private blocks = Array<Block>();
-    private drag?:HTMLElement // currently dragegd element
-
-
     private load!: () => void
     private import!: (output: Output) => void
+
+    private absx = 0;
+    private absy = 0;
+
+    //
+    // BLOCK SECTION
+    //
+
+    private blocks = Array<Block>();
+
+    #blockByValue(value: number | string) {
+        return document.getElementById( `block${value}`) as HTMLElement
+    }
+
+    /**
+    * deleteBlocks
+    *  
+    */
+    deleteBlock() {
+        this.blocks = [];
+        this._canvas.innerHTML = "<div class='indicator invisible'></div>";
+    }
+
+    //
+    // ARROW SECTION
+    //
+
+
+    #arrowByValue(value: number | string) {
+        return document.getElementById( `arrow${value}`) as HTMLElement
+    }
+    
+    public drawArrow( source:HTMLElement, target:HTMLElement ):void {
+
+    }
+
+    private _drawArrow(arrow: Block, x: number, y: number, id: number):void {
+        if( !this.drag ) return // GUARD
+        const { _canvas: canvas_div, spacing_x:paddingx, spacing_y:paddingy } = this;
+
+        const _source_block = this.blocks.find(a => a.id == id)!
+        const _target_block_id = this.#dragBlockIdNumber()
+
+        const adjustment = (this.absx + window.scrollX) - canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left
+       
+        let el:HTMLElement 
+        
+        // TODO MOVE SETTING OF DRAG PARENT OUT OF THIS METHOD
+        const sourceId = `block${_source_block.id}`
+        this.drag.setAttribute( 'parent', sourceId )
+
+        if (x < 0) {
+
+            el = createOrUpdateArrow(_target_block_id, 5, y, paddingy, _source_block.x - arrow.x + 5 ) 
+            el.setAttribute( "source", sourceId)
+            el.setAttribute( "target", `block${_target_block_id}`)
+            canvas_div.appendChild(el)
+            el.style.left = `${arrow.x - 5 - adjustment}px`
+
+        } else {
+
+            el = createOrUpdateArrow(_target_block_id, x, y, paddingy)
+            el.setAttribute( "source", sourceId)
+            el.setAttribute( "target", `block${_target_block_id}`)
+            canvas_div.appendChild(el)
+            el.style.left = `${_source_block.x - 20 - adjustment}px`
+
+        }
+
+        el.style.top = `${_source_block.y + (_source_block.height / 2) + canvas_div.getBoundingClientRect().top - this.absy}px`
+    }
+
+    private _updateArrow(arrow: Block, x: number, y: number, children: Block):void {
+
+        const { _canvas: canvas_div, spacing_x:paddingx, spacing_y:paddingy } = this;
+        const _source_block = this.blocks.find(a => a.id == children.parent)!
+        const el = this.#arrowByValue(children.id)
+
+        const adjustment = (this.absx + window.scrollX) - canvas_div.getBoundingClientRect().left
+
+        if (x < 0) {
+
+            createOrUpdateArrow( el, 5, y, paddingy, _source_block.x - arrow.x + 5 )
+            el.style.left = `${arrow.x - 5 - adjustment}px`
+
+        } else {
+
+            createOrUpdateArrow( el, x, y, paddingy )
+            el.style.left = `${_source_block.x - 20 - adjustment}px` 
+
+        }
+    }
+
+
+    //
+    // DRAG SECTION
+    //
+
+    private drag?:HTMLElement // currently dragegd element
+    private rearrange = false
+
     private beginDrag!: (event: any) => void
     private endDrag!: (event: any) => void
     private moveBlock!: (event: any) => void
     private touchblock!: (event: any) => void
     private addBlock!:( block?:AddBlockArgs ) => void
 
-    #dragBlockIdNumber!: () => number
+    #dragBlockIdNumber():number {
+                
+        const value = /block(\d+)/.exec(this.drag!.id)![1]
 
-    #blockByValue(value: number | string) {
-        return document.getElementById( `block${value}`) as HTMLElement
+        return parseInt(value)
     }
 
-    #arrowByValue(value: number | string) {
-        return document.getElementById( `arrow${value}`) as HTMLElement
-    }
-
-    private checkAttach( drag:HTMLElement, id: number) { 
+    private checkAttach( id: number) { 
 
         if( !this.drag ) return // GUARD
         const { _canvas: canvas_div, spacing_x:paddingx, spacing_y:paddingy } = this;
@@ -210,16 +304,38 @@ export class FlowyDiagram extends LitElement {
         
     }
 
-    /**
-    * deleteBlocks
-    *  
-    */
-    deleteBlock() {
-        this.blocks = [];
-        this._canvas.innerHTML = "<div class='indicator invisible'></div>";
-    }
-    
+    private addDragToCanvas():void {
 
+        if( !this.drag ) return // GUARD
+
+        this._canvas.appendChild(this.drag)
+
+        this.drag.addEventListener("click", (e) => {
+
+            if( !this.drag ) return // GUARD
+            // guard 
+            const skip = ( this.rearrange /* && drag.classList.contains('dragging')*/ )
+
+            this.drag.classList.remove('dragging')
+            this.rearrange = false
+
+            if( skip ) return
+
+            const event = new CustomEvent<HTMLElement>('blockSelected', {
+                detail: this.drag
+            })
+            this.dispatchEvent(event)
+    
+        })
+
+    }
+
+    removeSelection(): void {
+        if( !this.drag ) return // GUARD
+
+        this._canvas.appendChild(this._indicator);
+        this.drag.parentNode?.removeChild(this.drag);
+    }
 
     /**
      * traverse the diagram and generate a JSON representation
@@ -243,8 +359,11 @@ export class FlowyDiagram extends LitElement {
     protected render() {
         return html`<div id="canvas">`
     }
-
-
+ 
+    /**
+     * lit component lifecycle
+     * 
+     */
     protected firstUpdated() {
 
         let loaded = false;
@@ -259,7 +378,6 @@ export class FlowyDiagram extends LitElement {
             let blockstemp = Array<Block>();
             let active = false;
             let offsetleft = 0
-            let rearrange = false;
             let dragx: number
             let dragy: number
             let original: HTMLElement;
@@ -267,12 +385,10 @@ export class FlowyDiagram extends LitElement {
             let mouse_y:number
             let dragblock = false;
             let prevblock = 0;            
-            let absx = 0;
-            let absy = 0;
 
             if (window.getComputedStyle(canvas_div).position == "absolute" || window.getComputedStyle(canvas_div).position == "fixed") {
-                absx = canvas_div.getBoundingClientRect().left;
-                absy = canvas_div.getBoundingClientRect().top;
+                this.absx = canvas_div.getBoundingClientRect().left;
+                this.absy = canvas_div.getBoundingClientRect().top;
             }
 
             // indicator
@@ -281,12 +397,6 @@ export class FlowyDiagram extends LitElement {
             el.classList.add('invisible');
             canvas_div.appendChild(el);
 
-            this.#dragBlockIdNumber = () => {
-                
-                const value = /block(\d+)/.exec(this.drag!.id)![1]
-
-                return parseInt(value)
-            }
 
             this.addBlock = ( block?:AddBlockArgs ) => {
                 if( !this.drag ) return // GUARD
@@ -378,8 +488,8 @@ export class FlowyDiagram extends LitElement {
                 if (position == "absolute" || position == "fixed") {
 
                     const { left, top } =  canvas_div.getBoundingClientRect()
-                    absx = left;
-                    absy = top;
+                    this.absx = left;
+                    this.absy = top;
                 }
 
                 if ('targetTouches' in event && event.targetTouches) {
@@ -459,7 +569,7 @@ export class FlowyDiagram extends LitElement {
 
                 if (dragblock) {
 
-                    rearrange = true;
+                    this.rearrange = true;
                     this.drag.classList.add("dragging");
                     
                     const blockid = this.#dragBlockIdNumber();
@@ -539,16 +649,16 @@ export class FlowyDiagram extends LitElement {
                     this.drag.style.left = mouse_x - dragx + "px";
                     this.drag.style.top = mouse_y - dragy + "px";
 
-                } else if (rearrange) {
+                } else if (this.rearrange) {
                     
-                    this.drag.style.left = mouse_x - dragx - (window.scrollX + absx) + canvas_div.scrollLeft + "px";
-                    this.drag.style.top = mouse_y - dragy - (window.scrollY + absy) + canvas_div.scrollTop + "px";
+                    this.drag.style.left = mouse_x - dragx - (window.scrollX + this.absx) + canvas_div.scrollLeft + "px";
+                    this.drag.style.top = mouse_y - dragy - (window.scrollY + this.absy) + canvas_div.scrollTop + "px";
                     const b = blockstemp.find(a => a.id == this.#dragBlockIdNumber())!
                     b.x = (this.drag.getBoundingClientRect().left + window.scrollX) + (parseInt(window.getComputedStyle(this.drag).width) / 2) + canvas_div.scrollLeft;
                     b.y = (this.drag.getBoundingClientRect().top + window.scrollY) + (parseInt(window.getComputedStyle(this.drag).height) / 2) + canvas_div.scrollTop;
                 }
 
-                if (active || rearrange) {
+                if (active || this.rearrange) {
                     
                     const _rect = canvas_div.getBoundingClientRect()
 
@@ -568,7 +678,7 @@ export class FlowyDiagram extends LitElement {
 
                     for (let i = 0; i < this.blocks.length; i++) {
 
-                        if (this.checkAttach( this.drag, blocko[i])) {
+                        if (this.checkAttach( blocko[i])) {
                         
                             const _b = this.#blockByValue(blocko[i])
 
@@ -595,7 +705,7 @@ export class FlowyDiagram extends LitElement {
 
                 // GUARD
                 if( isRightClick(event) ) return
-                if( !(active || rearrange) ) return
+                if( !(active || this.rearrange) ) return
             
                 dragblock = false;
 
@@ -620,7 +730,7 @@ export class FlowyDiagram extends LitElement {
                             firstBlock('drop')
                         }
                         else {
-                            removeSelection() 
+                            this.removeSelection() 
                         }
                         return
                     }
@@ -631,26 +741,26 @@ export class FlowyDiagram extends LitElement {
 
                         const value = blocko[i]
 
-                        if (this.checkAttach( this.drag,value)) {
+                        if (this.checkAttach( value)) {
                             active = false
 
                             if (blockSnap(this.drag, false, this.#blockByValue(value))) {
                                 snap(this.drag, i, blocko)
                             } else {
                                 active = false
-                                removeSelection()
+                                this.removeSelection() 
                             }
                             break;
                         } else if (i == this.blocks.length - 1) {
                             active = false
-                            removeSelection()
+                            this.removeSelection() 
                         }
                     }
     
                 }
                 
                 // REARRANGE STRATEGY
-                if ( rearrange  ) {
+                if ( this.rearrange  ) {
 
                     if( this.#dragBlockIdNumber() === 0 ) {
                         firstBlock('rearrange')
@@ -665,7 +775,7 @@ export class FlowyDiagram extends LitElement {
                     const blocko = this.blocks.map(a => a.id);
 
                     for (let i = 0; i < this.blocks.length; i++) {
-                        if ( this.checkAttach( this.drag, blocko[i])) {
+                        if ( this.checkAttach( blocko[i])) {
                             active = false;
 
                             const b = this.blocks.find(id => id.id == blocko[i])! 
@@ -682,10 +792,10 @@ export class FlowyDiagram extends LitElement {
                         else if (i == this.blocks.length - 1) {
                     
                             if( this.deleteUnlinkBlockOnDrag ) {
-                                rearrange = false;
+                                this.rearrange = false;
                                 blockstemp = [];
                                 active = false;
-                                removeSelection();
+                                this.removeSelection() 
                                 break;
                             }
                             else {
@@ -703,39 +813,6 @@ export class FlowyDiagram extends LitElement {
                 
             }
 
-
-            const addDragToCanvas = () => {
-                if( !this.drag ) return // GUARD
-
-                canvas_div.appendChild(this.drag)
-
-                this.drag.addEventListener("click", (e) => {
-
-                    if( !this.drag ) return // GUARD
-                    // guard 
-                    const skip = ( rearrange /* && drag.classList.contains('dragging')*/ )
-
-                    this.drag.classList.remove('dragging')
-                    rearrange = false
-
-                    if( skip ) return
-
-                    const event = new CustomEvent<HTMLElement>('blockSelected', {
-                        detail: this.drag
-                    })
-                    this.dispatchEvent(event)
-            
-                })
-
-            }
-
-            const removeSelection = () => {
-                if( !this.drag ) return // GUARD
-
-                canvas_div.appendChild(this._indicator);
-                this.drag.parentNode?.removeChild(this.drag);
-            }
-
             const firstBlock = (type: ActionType) => {
                 if( !this.drag ) return // GUARD
 
@@ -743,10 +820,10 @@ export class FlowyDiagram extends LitElement {
 
                     blockSnap(this.drag, true, undefined);
                     active = false;
-                    this.drag.style.top = (this.drag.getBoundingClientRect().top + window.scrollY) - (absy + window.scrollY) + canvas_div.scrollTop + "px";
-                    this.drag.style.left = (this.drag.getBoundingClientRect().left + window.scrollX) - (absx + window.scrollX) + canvas_div.scrollLeft + "px";
+                    this.drag.style.top = (this.drag.getBoundingClientRect().top + window.scrollY) - (this.absy + window.scrollY) + canvas_div.scrollTop + "px";
+                    this.drag.style.left = (this.drag.getBoundingClientRect().left + window.scrollX) - (this.absx + window.scrollX) + canvas_div.scrollLeft + "px";
                     
-                    addDragToCanvas()
+                    this.addDragToCanvas()
 
                     this.addBlock()
 
@@ -756,10 +833,10 @@ export class FlowyDiagram extends LitElement {
                         if (blockstemp[w].id != this.#dragBlockIdNumber()) {
                             const blockParent = this.#blockByValue(blockstemp[w].id)
                             const arrowParent = this.#arrowByValue(blockstemp[w].id)
-                            blockParent.style.left = (blockParent.getBoundingClientRect().left + window.scrollX) - (window.scrollX) + canvas_div.scrollLeft - 1 - absx + "px";
-                            blockParent.style.top = (blockParent.getBoundingClientRect().top + window.scrollY) - (window.scrollY) + canvas_div.scrollTop - absy - 1 + "px";
-                            arrowParent.style.left = (arrowParent.getBoundingClientRect().left + window.scrollX) - (window.scrollX) + canvas_div.scrollLeft - absx - 1 + "px";
-                            arrowParent.style.top = (arrowParent.getBoundingClientRect().top + window.scrollY) + canvas_div.scrollTop - 1 - absy + "px";
+                            blockParent.style.left = (blockParent.getBoundingClientRect().left + window.scrollX) - (window.scrollX) + canvas_div.scrollLeft - 1 - this.absx + "px";
+                            blockParent.style.top = (blockParent.getBoundingClientRect().top + window.scrollY) - (window.scrollY) + canvas_div.scrollTop - this.absy - 1 + "px";
+                            arrowParent.style.left = (arrowParent.getBoundingClientRect().left + window.scrollX) - (window.scrollX) + canvas_div.scrollLeft - this.absx - 1 + "px";
+                            arrowParent.style.top = (arrowParent.getBoundingClientRect().top + window.scrollY) + canvas_div.scrollTop - 1 - this.absy + "px";
                             canvas_div.appendChild(blockParent);
                             canvas_div.appendChild(arrowParent);
                             blockstemp[w].x = (blockParent.getBoundingClientRect().left + window.scrollX) + (toInt(blockParent.offsetWidth) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left - 1;
@@ -773,66 +850,11 @@ export class FlowyDiagram extends LitElement {
                 }
             }
 
-            const drawArrow = (arrow: Block, x: number, y: number, id: number) => {
-                if( !this.drag ) return // GUARD
-
-                const _source_block = this.blocks.find(a => a.id == id)!
-                const _target_block_id = this.#dragBlockIdNumber()
-
-                const adjustment = (absx + window.scrollX) - canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left
-               
-                let el:HTMLElement 
-                
-                // TODO MOVE SETTING OF DRAG PARENT OUT OF THIS METHOD
-                const sourceId = `block${_source_block.id}`
-                this.drag.setAttribute( 'parent', sourceId )
-
-                if (x < 0) {
-
-                    el = createOrUpdateArrow(_target_block_id, 5, y, paddingy, _source_block.x - arrow.x + 5 ) 
-                    el.setAttribute( "source", sourceId)
-                    el.setAttribute( "target", `block${_target_block_id}`)
-                    canvas_div.appendChild(el)
-                    el.style.left = `${arrow.x - 5 - adjustment}px`
-
-                } else {
-
-                    el = createOrUpdateArrow(_target_block_id, x, y, paddingy)
-                    el.setAttribute( "source", sourceId)
-                    el.setAttribute( "target", `block${_target_block_id}`)
-                    canvas_div.appendChild(el)
-                    el.style.left = `${_source_block.x - 20 - adjustment}px`
-
-                }
-
-                el.style.top = `${_source_block.y + (_source_block.height / 2) + canvas_div.getBoundingClientRect().top - absy}px`
-            }
-
-            const updateArrow = (arrow: Block, x: number, y: number, children: Block) => {
-
-                const _source_block = this.blocks.find(a => a.id == children.parent)!
-                const el = this.#arrowByValue(children.id)
-
-                const adjustment = (absx + window.scrollX) - canvas_div.getBoundingClientRect().left
-
-                if (x < 0) {
-
-                    createOrUpdateArrow( el, 5, y, paddingy, _source_block.x - arrow.x + 5 )
-                    el.style.left = `${arrow.x - 5 - adjustment}px`
-
-                } else {
-
-                    createOrUpdateArrow( el, x, y, paddingy )
-                    el.style.left = `${_source_block.x - 20 - adjustment}px` 
-
-                }
-            }
-
             const snap = (drag: HTMLElement, i: number, blocko: Array<number>) => {
                 if( !this.drag ) return // GUARD
 
-                if (!rearrange) {
-                    addDragToCanvas()
+                if (!this.rearrange) {
+                    this.addDragToCanvas()
                 }
                 let totalwidth = 0;
                 let totalremove = 0;
@@ -860,9 +882,9 @@ export class FlowyDiagram extends LitElement {
                         totalremove += children.width + paddingx;
                     }
                 }
-                drag.style.left = this.blocks.filter(id => id.id == blocko[i])[0].x - (totalwidth / 2) + totalremove - (window.scrollX + absx) + canvas_div.scrollLeft + canvas_div.getBoundingClientRect().left + "px";
-                drag.style.top = this.blocks.filter(id => id.id == blocko[i])[0].y + (this.blocks.filter(id => id.id == blocko[i])[0].height / 2) + paddingy - (window.scrollY + absy) + canvas_div.getBoundingClientRect().top + "px";
-                if (rearrange) {
+                drag.style.left = this.blocks.filter(id => id.id == blocko[i])[0].x - (totalwidth / 2) + totalremove - (window.scrollX + this.absx) + canvas_div.scrollLeft + canvas_div.getBoundingClientRect().left + "px";
+                drag.style.top = this.blocks.filter(id => id.id == blocko[i])[0].y + (this.blocks.filter(id => id.id == blocko[i])[0].height / 2) + paddingy - (window.scrollY + this.absy) + canvas_div.getBoundingClientRect().top + "px";
+                if (this.rearrange) {
                     blockstemp.filter(a => a.id == this.#dragBlockIdNumber())[0].x = (this.drag.getBoundingClientRect().left + window.scrollX) + (parseInt(window.getComputedStyle(this.drag).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left;
                     blockstemp.filter(a => a.id == this.#dragBlockIdNumber())[0].y = (this.drag.getBoundingClientRect().top + window.scrollY) + (parseInt(window.getComputedStyle(this.drag).height) / 2) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top;
                     blockstemp.filter(a => a.id == this.#dragBlockIdNumber())[0].parent = blocko[i];
@@ -899,7 +921,7 @@ export class FlowyDiagram extends LitElement {
                 let arrowx = arrowblock.x - this.blocks.filter(a => a.id == blocko[i])[0].x + 20;
                 let arrowy = paddingy;
                 
-                drawArrow(arrowblock, arrowx, arrowy, blocko[i]);
+                this._drawArrow(arrowblock, arrowx, arrowy, blocko[i]);
 
                 if (this.blocks.filter(a => a.id == blocko[i])[0].parent != -1) {
                     let flag = false;
@@ -949,7 +971,7 @@ export class FlowyDiagram extends LitElement {
                     }
                     if (event.type !== "mouseup" && hasParentClass(event.target, "block")) {
                         if (event.which != 3) {
-                            if (!active && !rearrange) {
+                            if (!active && !this.rearrange) {
                                 dragblock = true;
                                 this.drag = theblock;
                                 if( this.drag ) {
@@ -969,17 +991,17 @@ export class FlowyDiagram extends LitElement {
                     item - (widths[index] / 2)
                 )
                 offsetleft = Math.min.apply(Math, mathmin);
-                if (offsetleft < (canvas_div.getBoundingClientRect().left + window.scrollX - absx)) {
+                if (offsetleft < (canvas_div.getBoundingClientRect().left + window.scrollX - this.absx)) {
                     let blocko = this.blocks.map(a => a.id);
                     for (let w = 0; w < this.blocks.length; w++) {
-                        this.#blockByValue(this.blocks.filter(a => a.id == blocko[w])[0].id).style.left = this.blocks.filter(a => a.id == blocko[w])[0].x - (this.blocks.filter(a => a.id == blocko[w])[0].width / 2) - offsetleft + canvas_div.getBoundingClientRect().left - absx + 20 + "px";
+                        this.#blockByValue(this.blocks.filter(a => a.id == blocko[w])[0].id).style.left = this.blocks.filter(a => a.id == blocko[w])[0].x - (this.blocks.filter(a => a.id == blocko[w])[0].width / 2) - offsetleft + canvas_div.getBoundingClientRect().left - this.absx + 20 + "px";
                         if (this.blocks.filter(a => a.id == blocko[w])[0].parent != -1) {
                             let arrowblock = this.blocks.filter(a => a.id == blocko[w])[0];
                             let arrowx = arrowblock.x - this.blocks.filter(a => a.id == this.blocks.filter(a => a.id == blocko[w])[0].parent)[0].x;
                             if (arrowx < 0) {
-                                this.#arrowByValue(blocko[w]).style.left = (arrowblock.x - offsetleft + 20 - 5) + canvas_div.getBoundingClientRect().left - absx + "px";
+                                this.#arrowByValue(blocko[w]).style.left = (arrowblock.x - offsetleft + 20 - 5) + canvas_div.getBoundingClientRect().left - this.absx + "px";
                             } else {
-                                this.#arrowByValue(blocko[w]).style.left = this.blocks.filter(id => id.id == this.blocks.filter(a => a.id == blocko[w])[0].parent)[0].x - 20 - offsetleft + canvas_div.getBoundingClientRect().left - absx + 20 + "px";
+                                this.#arrowByValue(blocko[w]).style.left = this.blocks.filter(id => id.id == this.blocks.filter(a => a.id == blocko[w])[0].parent)[0].x - 20 - offsetleft + canvas_div.getBoundingClientRect().left - this.absx + 20 + "px";
                             }
                         }
                     }
@@ -1027,11 +1049,11 @@ export class FlowyDiagram extends LitElement {
                         // r_block.style.top = r_array.y + paddingy + canvas_div.getBoundingClientRect().top - absy + "px";
                         // r_array.y = r_array.y + paddingy;
                         if (children.childwidth > children.width) {
-                            r_block.style.left = r_array[0].x - (totalwidth / 2) + totalremove + (children.childwidth / 2) - (children.width / 2) - (absx + window.scrollX) + canvas_div.getBoundingClientRect().left + "px";
+                            r_block.style.left = r_array[0].x - (totalwidth / 2) + totalremove + (children.childwidth / 2) - (children.width / 2) - (this.absx + window.scrollX) + canvas_div.getBoundingClientRect().left + "px";
                             children.x = r_array[0].x - (totalwidth / 2) + totalremove + (children.childwidth / 2);
                             totalremove += children.childwidth + paddingx;
                         } else {
-                            r_block.style.left = r_array[0].x - (totalwidth / 2) + totalremove - (absx + window.scrollX) + canvas_div.getBoundingClientRect().left + "px";
+                            r_block.style.left = r_array[0].x - (totalwidth / 2) + totalremove - (this.absx + window.scrollX) + canvas_div.getBoundingClientRect().left + "px";
                             children.x = r_array[0].x - (totalwidth / 2) + totalremove + (children.width / 2);
                             totalremove += children.width + paddingx;
                         }
@@ -1039,7 +1061,7 @@ export class FlowyDiagram extends LitElement {
                         let arrowblock = this.blocks.filter(a => a.id == children.id)[0];
                         let arrowx = arrowblock.x - this.blocks.filter(a => a.id == children.parent)[0].x + 20;
                         let arrowy = paddingy;
-                        updateArrow(arrowblock, arrowx, arrowy, children);
+                        this._updateArrow(arrowblock, arrowx, arrowy, children);
                     }
                 }
             }
