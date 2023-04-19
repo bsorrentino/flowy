@@ -272,7 +272,7 @@ export class FlowyDiagram extends LitElement {
                 let arrowblock = this.blocks.find(a => a.id == children.id)!
                 let arrowx = arrowblock.x - this.blocks.find(a => a.id == children.parent)!.x + 20
                 let arrowy = paddingy
-                this._updateArrow(arrowblock, arrowx, arrowy, children)
+                this.updateArrow(arrowblock, arrowx, arrowy, children)
             }
         }
     }
@@ -309,45 +309,48 @@ export class FlowyDiagram extends LitElement {
 
     }
 
-    private _drawArrow(arrow: Block, x: number, y: number, id: number):void {
+    private dragDrawArrow(arrow: Block, x: number, y: number, parent: number):void {
         if( !this.drag ) return // GUARD
+
+        const parent_id = `block${parent}`
+        
+        // TODO MOVE SETTING OF DRAG PARENT OUT OF THIS METHOD
+        this.drag.setAttribute( 'parent', parent_id )
+
         const { _canvas: canvas_div, spacing_y:paddingy } = this;
 
-        const _source_block = this.blocks.find(a => a.id == id)!
-        const _target_block_id = this.#dragBlockIdNumber()
+        const parent_block = this.blocks.find(a => a.id == parent)!
+        const drag_id = this.#dragBlockIdNumber()
 
         const adjustment = (this.absx + window.scrollX) - canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left
        
         let el:HTMLElement 
-        
-        // TODO MOVE SETTING OF DRAG PARENT OUT OF THIS METHOD
-        const sourceId = `block${_source_block.id}`
-        this.drag.setAttribute( 'parent', sourceId )
 
         if (x < 0) {
 
-            el = createOrUpdateArrow(_target_block_id, 5, y, paddingy, _source_block.x - arrow.x + 5 ) 
-            el.setAttribute( "source", sourceId)
-            el.setAttribute( "target", `block${_target_block_id}`)
+            el = createOrUpdateArrow(drag_id, 5, y, paddingy, parent_block.x - arrow.x + 5 ) 
+            el.setAttribute( "source", parent_id)
+            el.setAttribute( "target", `block${drag_id}`)
             canvas_div.appendChild(el)
             el.style.left = `${arrow.x - 5 - adjustment}px`
 
         } else {
 
-            el = createOrUpdateArrow(_target_block_id, x, y, paddingy)
-            el.setAttribute( "source", sourceId)
-            el.setAttribute( "target", `block${_target_block_id}`)
+            el = createOrUpdateArrow(drag_id, x, y, paddingy)
+            el.setAttribute( "source", parent_id)
+            el.setAttribute( "target", `block${drag_id}`)
             canvas_div.appendChild(el)
-            el.style.left = `${_source_block.x - 20 - adjustment}px`
+            el.style.left = `${parent_block.x - 20 - adjustment}px`
 
         }
 
-        el.style.top = `${_source_block.y + (_source_block.height / 2) + canvas_div.getBoundingClientRect().top - this.absy}px`
+        el.style.top = `${parent_block.y + (parent_block.height / 2) + canvas_div.getBoundingClientRect().top - this.absy}px`
     }
 
-    private _updateArrow(arrow: Block, x: number, y: number, children: Block):void {
+    private updateArrow(arrow: Block, x: number, y: number, children: Block):void {
 
-        const { _canvas: canvas_div, spacing_x:paddingx, spacing_y:paddingy } = this;
+        const { _canvas: canvas_div, spacing_y:paddingy } = this
+
         const _source_block = this.blocks.find(a => a.id == children.parent)!
         const el = this.#arrowByValue(children.id)
 
@@ -1021,7 +1024,7 @@ export class FlowyDiagram extends LitElement {
                 const arrowx = arrowblock.x - this.blocks.find(a => a.id == blocko[blockIndex])!.x + 20;
                 const arrowy = paddingy;
                 
-                this._drawArrow(arrowblock, arrowx, arrowy, blocko[blockIndex]);
+                this.dragDrawArrow(arrowblock, arrowx, arrowy, blocko[blockIndex]);
 
                 if (this.blocks.filter(a => a.id == blocko[blockIndex])[0].parent != -1) {
                     let flag = false;
