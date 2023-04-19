@@ -175,7 +175,7 @@ export class FlowyDiagram extends LitElement {
     private load!: () => void
     private import!: (output: Output) => void
 
-    checkOffset():void {
+    private checkOffset():void {
         const { left:canvas_left } = this._canvas.getBoundingClientRect()
 
         const offsetleftArr = this.blocks.map(a => a.x);
@@ -209,6 +209,71 @@ export class FlowyDiagram extends LitElement {
                         (this._canvas.scrollLeft) + 
                         (parseInt(window.getComputedStyle(this.#blockByValue(b.id)).width) / 2) - 20 - canvas_left
             )
+        }
+    }
+
+    private rearrangeMe():void {
+        const { _canvas: canvas_div, spacing_x:paddingx, spacing_y:paddingy } = this
+
+        let result = this.blocks.map(a => a.parent);
+        for (let z = 0; z < result.length; z++) {
+            if (result[z] == -1) {
+                z++;
+            }
+            let totalwidth = 0;
+            let totalremove = 0;
+
+            const parent_blocks = this.blocks.filter(id => id.parent == result[z])
+
+            for (let w = 0; w < parent_blocks.length; w++) {
+                
+                const children = parent_blocks[w];
+
+                if (this.blocks.filter(id => id.parent == children.id).length == 0) {
+                    children.childwidth = 0;
+                }
+                if (children.childwidth > children.width) {
+                    if (w == parent_blocks.length - 1) {
+                        totalwidth += children.childwidth;
+                    } else {
+                        totalwidth += children.childwidth + paddingx;
+                    }
+                } else {
+                    if (w == parent_blocks.length - 1) {
+                        totalwidth += children.width;
+                    } else {
+                        totalwidth += children.width + paddingx;
+                    }
+                }
+            }
+
+            const r_array = this.blocks.filter(id => id.id == result[z])!
+
+            if (result[z] != -1) {
+                r_array[0].childwidth = totalwidth;
+            }
+
+            for (let w = 0; w < parent_blocks.length; w++) {
+                
+                const children = parent_blocks[w];
+
+                const r_block = this.#blockByValue(children.id)
+                
+                if (children.childwidth > children.width) {
+                    r_block.style.left = r_array[0].x - (totalwidth / 2) + totalremove + (children.childwidth / 2) - (children.width / 2) - (this.absx + window.scrollX) + canvas_div.getBoundingClientRect().left + "px";
+                    children.x = r_array[0].x - (totalwidth / 2) + totalremove + (children.childwidth / 2);
+                    totalremove += children.childwidth + paddingx;
+                } else {
+                    r_block.style.left = r_array[0].x - (totalwidth / 2) + totalremove - (this.absx + window.scrollX) + canvas_div.getBoundingClientRect().left + "px";
+                    children.x = r_array[0].x - (totalwidth / 2) + totalremove + (children.width / 2);
+                    totalremove += children.width + paddingx;
+                }
+
+                let arrowblock = this.blocks.find(a => a.id == children.id)!
+                let arrowx = arrowblock.x - this.blocks.find(a => a.id == children.parent)!.x + 20
+                let arrowy = paddingy
+                this._updateArrow(arrowblock, arrowx, arrowy, children)
+            }
         }
     }
 
@@ -474,7 +539,7 @@ export class FlowyDiagram extends LitElement {
                     this.addBlock( output.blockarr[a] )
                 }
                 if (this.blocks.length > 1) {
-                    rearrangeMe();
+                    this.rearrangeMe();
                     this.checkOffset();
                 }
             }
@@ -675,7 +740,7 @@ export class FlowyDiagram extends LitElement {
                     }
 
                     if (this.blocks.length > 1) {
-                        rearrangeMe();
+                        this.rearrangeMe();
                     }
 
                     dragblock = false;
@@ -989,7 +1054,7 @@ export class FlowyDiagram extends LitElement {
                     this.blocks.filter(id => id.id == idval)[0].childwidth = totalwidth;
                 }
 
-                rearrangeMe();
+                this.rearrangeMe();
                 this.checkOffset();
             }
 
@@ -1019,60 +1084,6 @@ export class FlowyDiagram extends LitElement {
                 }
             }
 
-            const rearrangeMe = () => {
-
-                let result = this.blocks.map(a => a.parent);
-                for (let z = 0; z < result.length; z++) {
-                    if (result[z] == -1) {
-                        z++;
-                    }
-                    let totalwidth = 0;
-                    let totalremove = 0;
-                    for (let w = 0; w < this.blocks.filter(id => id.parent == result[z]).length; w++) {
-                        let children = this.blocks.filter(id => id.parent == result[z])[w];
-                        if (this.blocks.filter(id => id.parent == children.id).length == 0) {
-                            children.childwidth = 0;
-                        }
-                        if (children.childwidth > children.width) {
-                            if (w == this.blocks.filter(id => id.parent == result[z]).length - 1) {
-                                totalwidth += children.childwidth;
-                            } else {
-                                totalwidth += children.childwidth + paddingx;
-                            }
-                        } else {
-                            if (w == this.blocks.filter(id => id.parent == result[z]).length - 1) {
-                                totalwidth += children.width;
-                            } else {
-                                totalwidth += children.width + paddingx;
-                            }
-                        }
-                    }
-                    if (result[z] != -1) {
-                        this.blocks.filter(a => a.id == result[z])[0].childwidth = totalwidth;
-                    }
-                    for (let w = 0; w < this.blocks.filter(id => id.parent == result[z]).length; w++) {
-                        let children = this.blocks.filter(id => id.parent == result[z])[w];
-                        const r_block = this.#blockByValue(children.id)
-                        const r_array = this.blocks.filter(id => id.id == result[z]);
-                        // r_block.style.top = r_array.y + paddingy + canvas_div.getBoundingClientRect().top - absy + "px";
-                        // r_array.y = r_array.y + paddingy;
-                        if (children.childwidth > children.width) {
-                            r_block.style.left = r_array[0].x - (totalwidth / 2) + totalremove + (children.childwidth / 2) - (children.width / 2) - (this.absx + window.scrollX) + canvas_div.getBoundingClientRect().left + "px";
-                            children.x = r_array[0].x - (totalwidth / 2) + totalremove + (children.childwidth / 2);
-                            totalremove += children.childwidth + paddingx;
-                        } else {
-                            r_block.style.left = r_array[0].x - (totalwidth / 2) + totalremove - (this.absx + window.scrollX) + canvas_div.getBoundingClientRect().left + "px";
-                            children.x = r_array[0].x - (totalwidth / 2) + totalremove + (children.width / 2);
-                            totalremove += children.width + paddingx;
-                        }
-
-                        let arrowblock = this.blocks.filter(a => a.id == children.id)[0];
-                        let arrowx = arrowblock.x - this.blocks.filter(a => a.id == children.parent)[0].x + 20;
-                        let arrowy = paddingy;
-                        this._updateArrow(arrowblock, arrowx, arrowy, children);
-                    }
-                }
-            }
 
             document.addEventListener("mousedown", this.beginDrag);
             document.addEventListener("mousedown", this.touchblock, false);
