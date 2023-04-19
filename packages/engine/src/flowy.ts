@@ -169,11 +169,48 @@ export class FlowyDiagram extends LitElement {
     @property( { type: 'number'} )
     spacing_y = 80
 
+    private absx = 0;
+    private absy = 0;
+
     private load!: () => void
     private import!: (output: Output) => void
 
-    private absx = 0;
-    private absy = 0;
+    checkOffset():void {
+        const { left:canvas_left } = this._canvas.getBoundingClientRect()
+
+        const offsetleftArr = this.blocks.map(a => a.x);
+        const widths = this.blocks.map(a => a.width);
+        const mathmin = offsetleftArr.map((item, index) => item - (widths[index] / 2))
+        const offsetleft = Math.min.apply(Math, mathmin);
+
+        if (offsetleft < (canvas_left + window.scrollX - this.absx)) {
+
+            const blocko = this.blocks.map(a => a.id);
+            
+            for (let w = 0; w < this.blocks.length; w++) {
+
+                const arrowblock = this.blocks.find(a => a.id == blocko[w])!
+
+                this.#blockByValue(arrowblock.id).style.left = arrowblock.x - (arrowblock.width / 2) - offsetleft + canvas_left - this.absx + 20 + "px";
+                
+                if (arrowblock.parent != -1) {
+                    const parentblock = this.blocks.find(a => a.id == arrowblock.parent)!
+                    const arrowx = arrowblock.x - parentblock.x;
+                    if (arrowx < 0) {
+                        this.#arrowByValue(blocko[w]).style.left = ( arrowblock.x - offsetleft + 15 ) + canvas_left - this.absx + "px";
+                    } else {
+                        this.#arrowByValue(blocko[w]).style.left = ( parentblock.x - offsetleft ) + canvas_left - this.absx + "px";
+                    }
+                }
+            }
+            
+            this.blocks.forEach( b => 
+                b.x = (this.#blockByValue(b.id).getBoundingClientRect().left + window.scrollX) + 
+                        (this._canvas.scrollLeft) + 
+                        (parseInt(window.getComputedStyle(this.#blockByValue(b.id)).width) / 2) - 20 - canvas_left
+            )
+        }
+    }
 
     //
     // BLOCK SECTION
@@ -209,7 +246,7 @@ export class FlowyDiagram extends LitElement {
 
     private _drawArrow(arrow: Block, x: number, y: number, id: number):void {
         if( !this.drag ) return // GUARD
-        const { _canvas: canvas_div, spacing_x:paddingx, spacing_y:paddingy } = this;
+        const { _canvas: canvas_div, spacing_y:paddingy } = this;
 
         const _source_block = this.blocks.find(a => a.id == id)!
         const _target_block_id = this.#dragBlockIdNumber()
@@ -377,7 +414,7 @@ export class FlowyDiagram extends LitElement {
 
             let blockstemp = Array<Block>();
             let active = false;
-            let offsetleft = 0
+            //let offsetleft = 0
             let dragx: number
             let dragy: number
             let original: HTMLElement;
@@ -438,7 +475,7 @@ export class FlowyDiagram extends LitElement {
                 }
                 if (this.blocks.length > 1) {
                     rearrangeMe();
-                    checkOffset();
+                    this.checkOffset();
                 }
             }
 
@@ -808,9 +845,7 @@ export class FlowyDiagram extends LitElement {
                         }
                     }
                 } 
-                
-
-                
+                                
             }
 
             const firstBlock = (type: ActionType) => {
@@ -955,7 +990,7 @@ export class FlowyDiagram extends LitElement {
                 }
 
                 rearrangeMe();
-                checkOffset();
+                this.checkOffset();
             }
 
             this.touchblock = (event: any) => {
@@ -980,33 +1015,6 @@ export class FlowyDiagram extends LitElement {
                                 }
                             }
                         }
-                    }
-                }
-            }
-
-            const checkOffset = () => {
-                const offsetleftArr = this.blocks.map(a => a.x);
-                let widths = this.blocks.map(a => a.width);
-                let mathmin = offsetleftArr.map((item, index) =>
-                    item - (widths[index] / 2)
-                )
-                offsetleft = Math.min.apply(Math, mathmin);
-                if (offsetleft < (canvas_div.getBoundingClientRect().left + window.scrollX - this.absx)) {
-                    let blocko = this.blocks.map(a => a.id);
-                    for (let w = 0; w < this.blocks.length; w++) {
-                        this.#blockByValue(this.blocks.filter(a => a.id == blocko[w])[0].id).style.left = this.blocks.filter(a => a.id == blocko[w])[0].x - (this.blocks.filter(a => a.id == blocko[w])[0].width / 2) - offsetleft + canvas_div.getBoundingClientRect().left - this.absx + 20 + "px";
-                        if (this.blocks.filter(a => a.id == blocko[w])[0].parent != -1) {
-                            let arrowblock = this.blocks.filter(a => a.id == blocko[w])[0];
-                            let arrowx = arrowblock.x - this.blocks.filter(a => a.id == this.blocks.filter(a => a.id == blocko[w])[0].parent)[0].x;
-                            if (arrowx < 0) {
-                                this.#arrowByValue(blocko[w]).style.left = (arrowblock.x - offsetleft + 20 - 5) + canvas_div.getBoundingClientRect().left - this.absx + "px";
-                            } else {
-                                this.#arrowByValue(blocko[w]).style.left = this.blocks.filter(id => id.id == this.blocks.filter(a => a.id == blocko[w])[0].parent)[0].x - 20 - offsetleft + canvas_div.getBoundingClientRect().left - this.absx + 20 + "px";
-                            }
-                        }
-                    }
-                    for (let w = 0; w < this.blocks.length; w++) {
-                        this.blocks[w].x = (this.#blockByValue(this.blocks[w].id).getBoundingClientRect().left + window.scrollX) + (canvas_div.scrollLeft) + (parseInt(window.getComputedStyle(this.#blockByValue(this.blocks[w].id)).width) / 2) - 20 - canvas_div.getBoundingClientRect().left;
                     }
                 }
             }
