@@ -1,8 +1,9 @@
 import {html, render} from 'lit-html';
 import { unsafeHTML } from 'lit-html/directives/unsafe-html';
 import type { FlowyDiagram } from 'flowy-engine'
-
 import './element.css'
+
+import * as condition from './condition'
 
 const mode_img = new URL('../assets/more.svg', import.meta.url)
 const grabme_img = new URL('../assets/grabme.svg', import.meta.url)
@@ -103,11 +104,6 @@ export function initElement( diagram:FlowyDiagram, templates_container:HTMLEleme
 
 const addElement = ( diagram:FlowyDiagram, target:HTMLElement, parent?:HTMLElement ) => {
 
-    const grab = target.querySelector(".grabme") 
-    grab?.parentElement?.removeChild(grab);
-    const blockin = target.querySelector(".blockin");
-    blockin?.parentElement?.removeChild(blockin);
-
     const value = (target.querySelector(".blockelemtype") as HTMLDataElement).value
 
     switch( value ) {
@@ -144,6 +140,8 @@ const addElement = ( diagram:FlowyDiagram, target:HTMLElement, parent?:HTMLEleme
         case "11":
             _addElement( diagram, target, errorred_img, 'Prompt an error', 'Trigger <span>Error 1</span>');
             break
+        case condition.TYPE:
+            return condition.addElement( diagram, target, parent  )  
         default:
             return false
     }
@@ -207,6 +205,7 @@ const _addTemplates =  ( target:HTMLElement ) => {
             _createTemplate(9, log_img, 'Add new log entry', 'Adds a new log entry to this project'),
             _createTemplate(10, log_img, 'Update logs', 'Edits and deletes log entries in this project'),
             _createTemplate(11, error_img, 'Prompt an error', 'Triggers a specified error'),
+            condition.createTemplate(),
     ]
 
     render(html`${templates}`, target)
