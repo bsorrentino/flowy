@@ -813,28 +813,43 @@ export class FlowyDiagram extends LitElement {
                     // let xpos = (this.drag.getBoundingClientRect().left + window.scrollX) + (parseInt(window.getComputedStyle(this.drag).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left;
                     // let ypos = (this.drag.getBoundingClientRect().top + window.scrollY) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top;
                     
-                    const blocko = this.blocks.map(a => a.id);
+                    const blocka = this.blocks.find( b => this.checkAttach( b.id ) )
+                    if( blocka ) {
+                        const block = this.#blockByValue(blocka.id)
 
-                    for (let i = 0; i < this.blocks.length; i++) {
-
-                        if (this.checkAttach( blocko[i])) {
-                        
-                            const _b = this.#blockByValue(blocko[i])
-
-                            _b.appendChild(this._indicator);
-                            this._indicator.style.left = (_b.offsetWidth / 2) - 5 + "px";
-                            this._indicator.style.top = _b.offsetHeight + "px";
-                            this._indicator.classList.remove("invisible");
-                        
-                            break;
-                        
-                        } else if (i == this.blocks.length - 1) {
-                        
-                            if (!this._indicator.classList.contains("invisible")) {
-                                this._indicator.classList.add("invisible");
-                            }
+                        block.appendChild(this._indicator);
+                        this._indicator.style.left = (block.offsetWidth / 2) - 5 + "px";
+                        this._indicator.style.top = block.offsetHeight + "px";
+                        this._indicator.classList.remove("invisible");
+                    }
+                    else {
+                        if (!this._indicator.classList.contains("invisible")) {
+                            this._indicator.classList.add("invisible");
                         }
                     }
+                    
+                    // const blocko = this.blocks.map(a => a.id);
+
+                    // for (let i = 0; i < this.blocks.length; i++) {
+
+                    //     if (this.checkAttach( blocko[i])) {
+                        
+                    //         const _b = this.#blockByValue(blocko[i])
+
+                    //         _b.appendChild(this._indicator);
+                    //         this._indicator.style.left = (_b.offsetWidth / 2) - 5 + "px";
+                    //         this._indicator.style.top = _b.offsetHeight + "px";
+                    //         this._indicator.classList.remove("invisible");
+                        
+                    //         break;
+                        
+                    //     } else if (i == this.blocks.length - 1) {
+                        
+                    //         if (!this._indicator.classList.contains("invisible")) {
+                    //             this._indicator.classList.add("invisible");
+                    //         }
+                    //     }
+                    // }
                 }
             }
 
