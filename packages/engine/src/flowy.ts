@@ -889,27 +889,46 @@ export class FlowyDiagram extends LitElement {
                         return
                     }
 
-                    const blocko = this.blocks.map(a => a.id)
-          
-                    for (let i = 0; i < this.blocks.length; i++) {
+                    const block_index = this.blocks.findIndex( b => this.checkAttach( b.id ) )
+                    if( block_index != -1 ) {
+                        active = false
 
-                        const value = blocko[i]
+                        const blocka = this.blocks[block_index]
 
-                        if (this.checkAttach( value)) {
-                            active = false
-
-                            if (this.blockSnap(this.drag, false, this.#blockByValue(value))) {
-                                snap(this.drag, i, blocko)
-                            } else {
-                                active = false
-                                this.removeSelection() 
-                            }
-                            break;
-                        } else if (i == this.blocks.length - 1) {
+                        if (this.blockSnap(this.drag, false, this.#blockByValue( blocka.id))) {
+                            const blocko = this.blocks.map(a => a.id)
+                            snap(this.drag, block_index, blocko)
+                        } else {
                             active = false
                             this.removeSelection() 
                         }
                     }
+                    else {
+                        active = false
+                        this.removeSelection() 
+                    }
+
+                    // const blocko = this.blocks.map(a => a.id)
+          
+                    // for (let i = 0; i < this.blocks.length; i++) {
+
+                    //     const value = blocko[i]
+
+                    //     if (this.checkAttach( value)) {
+                    //         active = false
+
+                    //         if (this.blockSnap(this.drag, false, this.#blockByValue(value))) {
+                    //             snap(this.drag, i, blocko)
+                    //         } else {
+                    //             active = false
+                    //             this.removeSelection() 
+                    //         }
+                    //         break;
+                    //     } else if (i == this.blocks.length - 1) {
+                    //         active = false
+                    //         this.removeSelection() 
+                    //     }
+                    // }
     
                 }
                 
