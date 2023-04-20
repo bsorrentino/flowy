@@ -79,6 +79,8 @@ const blockIdNumber = ( el: HTMLElement ) => {
     return parseInt(value)
 }
 
+
+
 type AddBlockArgs = Omit<Block, 'height'|'width'> & Partial<Block>
 
 
@@ -301,6 +303,36 @@ export class FlowyDiagram extends LitElement {
     deleteBlock() {
         this.blocks = [];
         this._canvas.innerHTML = "<div class='indicator invisible'></div>";
+    }
+
+    private blockGrabbed(block: HTMLElement) {
+        const event = new CustomEvent<HTMLElement>('templateGrabbed', {
+            detail: block
+        })
+        this.dispatchEvent(event)
+    }
+
+    private blockReleased( block: HTMLElement ) {
+        const event = new CustomEvent<HTMLElement>('templateReleased', {
+            detail: block
+        })
+        this.dispatchEvent(event)
+    }
+
+    private blockSnap(drag: HTMLElement, first: boolean, parent?: HTMLElement) {
+        const event = new CustomEvent<{target: HTMLElement, parent?: HTMLElement}>('snapping', {
+            detail: { target:drag, parent: parent },
+            cancelable: true
+        })
+        return this.dispatchEvent(event)
+    }
+    
+    private blockMove(drag: HTMLElement, target: Block) {
+        const event = new CustomEvent<{ source:HTMLElement, target: number }>('moving', {
+            detail: { source: drag, target: target.id },
+            cancelable: true
+        })
+        return this.dispatchEvent(event)
     }
 
     //
@@ -643,7 +675,7 @@ export class FlowyDiagram extends LitElement {
                     
                     this.drag = newNode
 
-                    blockGrabbed(item);
+                    this.blockGrabbed(item);
 
                     this.drag.classList.add("dragging");
 
@@ -818,7 +850,7 @@ export class FlowyDiagram extends LitElement {
             
                 dragblock = false;
 
-                blockReleased( original );
+                this.blockReleased( original );
                 
                 if (!this._indicator.classList.contains("invisible")) {
                     this._indicator.classList.add("invisible");
@@ -853,7 +885,7 @@ export class FlowyDiagram extends LitElement {
                         if (this.checkAttach( value)) {
                             active = false
 
-                            if (blockSnap(this.drag, false, this.#blockByValue(value))) {
+                            if (this.blockSnap(this.drag, false, this.#blockByValue(value))) {
                                 snap(this.drag, i, blocko)
                             } else {
                                 active = false
@@ -890,7 +922,7 @@ export class FlowyDiagram extends LitElement {
                             const b = this.blocks.find(id => id.id == blocko[i])! 
                             console.assert( b!==undefined, `block ${blocko[i]} not found!` )
 
-                            if (blockMove(this.drag, b) ) {
+                            if (this.blockMove(this.drag, b) ) {
                                  snap(this.drag, i, blocko);
                             }
                             else {
@@ -925,7 +957,7 @@ export class FlowyDiagram extends LitElement {
 
                 if (type == "drop") {
 
-                    blockSnap(this.drag, true, undefined);
+                    this.blockSnap(this.drag, true, undefined);
                     active = false;
                     this.drag.style.top = (this.drag.getBoundingClientRect().top + window.scrollY) - (this.absy + window.scrollY) + canvas_div.scrollTop + "px";
                     this.drag.style.left = (this.drag.getBoundingClientRect().left + window.scrollX) - (this.absx + window.scrollX) + canvas_div.scrollLeft + "px";
@@ -1104,36 +1136,6 @@ export class FlowyDiagram extends LitElement {
 
             document.addEventListener("mouseup", this.endDrag, false);
             document.addEventListener("touchend", this.endDrag, false);
-        }
-
-        const blockGrabbed = (block: HTMLElement) => {
-            const event = new CustomEvent<HTMLElement>('templateGrabbed', {
-                detail: block
-            })
-            this.dispatchEvent(event)
-        }
-
-        const blockReleased = ( block: HTMLElement ) => {
-            const event = new CustomEvent<HTMLElement>('templateReleased', {
-                detail: block
-            })
-            this.dispatchEvent(event)
-        }
-
-        const blockSnap = (drag: HTMLElement, first: boolean, parent?: HTMLElement) => {
-            const event = new CustomEvent<{target: HTMLElement, parent?: HTMLElement}>('snapping', {
-                detail: { target:drag, parent: parent },
-                cancelable: true
-            })
-            return this.dispatchEvent(event)
-        }
-        
-        const blockMove = (drag: HTMLElement, target: Block) => {
-            const event = new CustomEvent<{ source:HTMLElement, target: number }>('moving', {
-                detail: { source: drag, target: target.id },
-                cancelable: true
-            })
-            return this.dispatchEvent(event)
         }
 
         this.load();
