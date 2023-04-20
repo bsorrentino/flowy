@@ -180,7 +180,57 @@ export class FlowyDiagram extends LitElement {
     private absy = 0;
 
     private load!: () => void
-    private import!: (output: Output) => void
+
+    /**
+     * traverse the diagram and generate a JSON representation
+     */
+    output(): Output {
+
+        const html_ser = this._canvas.innerHTML;
+        const json_data: Output = {
+            html: html_ser,
+            blockarr: this.blocks,
+            blocks: Array<BlockData>()
+        };
+        if (this.blocks.length > 0) {
+
+            for (let i = 0; i < this.blocks.length; i++) {
+                json_data.blocks.push({
+                    id: this.blocks[i].id,
+                    parent: this.blocks[i].parent,
+                    data: [],
+                    attr: []
+                });
+                let blockParent = this.#blockByValue(this.blocks[i].id)
+                blockParent?.querySelectorAll("input").forEach(block => {
+                    let json_name = block.getAttribute("name");
+                    let json_value = block.value;
+                    json_data.blocks[i].data.push({
+                        name: json_name,
+                        value: json_value
+                    });
+                });
+                Array.prototype.slice.call(blockParent?.attributes).forEach(attribute => {
+                    let jsonobj: Record<string, any> = {}
+                    jsonobj[attribute.name] = attribute.value;
+                    json_data.blocks[i].attr.push(jsonobj);
+                });
+            }
+        }
+        return json_data;
+    }
+    
+    import( output:Output ) {
+
+        this._canvas.innerHTML = output.html;
+        for (let a = 0; a < output.blockarr.length; a++) {
+            this.addBlock( output.blockarr[a] )
+        }
+        if (this.blocks.length > 1) {
+            this.rearrangeMe();
+            this.checkOffset();
+        }
+    }
 
     private checkOffset():void {
         const { left:canvas_left } = this._canvas.getBoundingClientRect()
@@ -471,10 +521,6 @@ export class FlowyDiagram extends LitElement {
         this.drag.parentNode?.removeChild(this.drag);
     }
 
-    /**
-     * traverse the diagram and generate a JSON representation
-     */
-    output!: () => Output | undefined
   
     /**
      * disable shadow root
@@ -563,57 +609,6 @@ export class FlowyDiagram extends LitElement {
                 }
 
             }
-
-            this.import = output => {
-
-                canvas_div.innerHTML = output.html;
-                for (let a = 0; a < output.blockarr.length; a++) {
-                    this.addBlock( output.blockarr[a] )
-                }
-                if (this.blocks.length > 1) {
-                    this.rearrangeMe();
-                    this.checkOffset();
-                }
-            }
-
-            /**
-             * output
-             */
-            this.output = () => {
-
-                let html_ser = canvas_div.innerHTML;
-                let json_data: Output = {
-                    html: html_ser,
-                    blockarr: this.blocks,
-                    blocks: Array<BlockData>()
-                };
-                if (this.blocks.length > 0) {
-                    for (let i = 0; i < this.blocks.length; i++) {
-                        json_data.blocks.push({
-                            id: this.blocks[i].id,
-                            parent: this.blocks[i].parent,
-                            data: [],
-                            attr: []
-                        });
-                        let blockParent = this.#blockByValue(this.blocks[i].id)
-                        blockParent?.querySelectorAll("input").forEach(block => {
-                            let json_name = block.getAttribute("name");
-                            let json_value = block.value;
-                            json_data.blocks[i].data.push({
-                                name: json_name,
-                                value: json_value
-                            });
-                        });
-                        Array.prototype.slice.call(blockParent?.attributes).forEach(attribute => {
-                            let jsonobj: Record<string, any> = {}
-                            jsonobj[attribute.name] = attribute.value;
-                            json_data.blocks[i].attr.push(jsonobj);
-                        });
-                    }
-                    return json_data;
-                }
-            }
-
 
             this.beginDrag = (event:UIEvent) => {
 
