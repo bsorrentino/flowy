@@ -27,8 +27,6 @@ export interface Output {
     blocks: Array<any>
 }
 
-type ActionType = 'drop' | 'rearrange'
-
 function toInt(value: number | string) {
     if (typeof (value) === 'number')
         return parseInt(`${value}`)
@@ -868,7 +866,7 @@ export class FlowyDiagram extends LitElement {
                         const { top:canvas_top, left:canvas_left } = canvas_div.getBoundingClientRect()
 
                         if ((drag_top + window.scrollY) > (canvas_top + window.scrollY) && (drag_left + window.scrollX) > (canvas_left + window.scrollX)) {
-                            firstBlock('drop')
+                            dropFirstBlock(this.drag)
                         }
                         else {
                             this.removeSelection() 
@@ -904,7 +902,7 @@ export class FlowyDiagram extends LitElement {
                 if ( this.rearrange  ) {
 
                     if( this.#dragIdNumber === 0 ) {
-                        firstBlock('rearrange')
+                        rearrangeFirstBlock(this.drag)
                         return
                     }
 
@@ -952,41 +950,38 @@ export class FlowyDiagram extends LitElement {
                                 
             }
 
-            const firstBlock = (type: ActionType) => {
-                if( !this.drag ) return // GUARD
+            const dropFirstBlock = (block: HTMLElement) => {
 
-                if (type == "drop") {
+                this.blockSnap(block, true, undefined);
+                active = false;
+                block.style.top = (block.getBoundingClientRect().top + window.scrollY) - (this.absy + window.scrollY) + canvas_div.scrollTop + "px";
+                block.style.left = (block.getBoundingClientRect().left + window.scrollX) - (this.absx + window.scrollX) + canvas_div.scrollLeft + "px";
+                
+                this.addDragToCanvas()
 
-                    this.blockSnap(this.drag, true, undefined);
-                    active = false;
-                    this.drag.style.top = (this.drag.getBoundingClientRect().top + window.scrollY) - (this.absy + window.scrollY) + canvas_div.scrollTop + "px";
-                    this.drag.style.left = (this.drag.getBoundingClientRect().left + window.scrollX) - (this.absx + window.scrollX) + canvas_div.scrollLeft + "px";
-                    
-                    this.addDragToCanvas()
+                this.addBlock()
+            }
 
-                    this.addBlock()
+            const rearrangeFirstBlock = (block:HTMLElement) => {
 
-                } else if (type == "rearrange") {
-
-                    for (let w = 0; w < blockstemp.length; w++) {
-                        if (blockstemp[w].id != this.#dragIdNumber) {
-                            const blockParent = this.#blockByValue(blockstemp[w].id)
-                            const arrowParent = this.#arrowByValue(blockstemp[w].id)
-                            blockParent.style.left = (blockParent.getBoundingClientRect().left + window.scrollX) - (window.scrollX) + canvas_div.scrollLeft - 1 - this.absx + "px";
-                            blockParent.style.top = (blockParent.getBoundingClientRect().top + window.scrollY) - (window.scrollY) + canvas_div.scrollTop - this.absy - 1 + "px";
-                            arrowParent.style.left = (arrowParent.getBoundingClientRect().left + window.scrollX) - (window.scrollX) + canvas_div.scrollLeft - this.absx - 1 + "px";
-                            arrowParent.style.top = (arrowParent.getBoundingClientRect().top + window.scrollY) + canvas_div.scrollTop - 1 - this.absy + "px";
-                            canvas_div.appendChild(blockParent);
-                            canvas_div.appendChild(arrowParent);
-                            blockstemp[w].x = (blockParent.getBoundingClientRect().left + window.scrollX) + (toInt(blockParent.offsetWidth) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left - 1;
-                            blockstemp[w].y = (blockParent.getBoundingClientRect().top + window.scrollY) + (toInt(blockParent.offsetHeight) / 2) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top - 1;
-                        }
+                for (let w = 0; w < blockstemp.length; w++) {
+                    if (blockstemp[w].id != this.#dragIdNumber) {
+                        const blockParent = this.#blockByValue(blockstemp[w].id)
+                        const arrowParent = this.#arrowByValue(blockstemp[w].id)
+                        blockParent.style.left = (blockParent.getBoundingClientRect().left + window.scrollX) - (window.scrollX) + canvas_div.scrollLeft - 1 - this.absx + "px";
+                        blockParent.style.top = (blockParent.getBoundingClientRect().top + window.scrollY) - (window.scrollY) + canvas_div.scrollTop - this.absy - 1 + "px";
+                        arrowParent.style.left = (arrowParent.getBoundingClientRect().left + window.scrollX) - (window.scrollX) + canvas_div.scrollLeft - this.absx - 1 + "px";
+                        arrowParent.style.top = (arrowParent.getBoundingClientRect().top + window.scrollY) + canvas_div.scrollTop - 1 - this.absy + "px";
+                        canvas_div.appendChild(blockParent);
+                        canvas_div.appendChild(arrowParent);
+                        blockstemp[w].x = (blockParent.getBoundingClientRect().left + window.scrollX) + (toInt(blockParent.offsetWidth) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left - 1;
+                        blockstemp[w].y = (blockParent.getBoundingClientRect().top + window.scrollY) + (toInt(blockParent.offsetHeight) / 2) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top - 1;
                     }
-                    blockstemp.filter(a => a.id == 0)[0].x = (this.drag.getBoundingClientRect().left + window.scrollX) + (parseInt(window.getComputedStyle(this.drag).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left;
-                    blockstemp.filter(a => a.id == 0)[0].y = (this.drag.getBoundingClientRect().top + window.scrollY) + (parseInt(window.getComputedStyle(this.drag).height) / 2) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top;
-                    this.blocks = this.blocks.concat(blockstemp);
-                    blockstemp = [];
                 }
+                blockstemp.filter(a => a.id == 0)[0].x = (block.getBoundingClientRect().left + window.scrollX) + (parseInt(window.getComputedStyle(block).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left;
+                blockstemp.filter(a => a.id == 0)[0].y = (block.getBoundingClientRect().top + window.scrollY) + (parseInt(window.getComputedStyle(block).height) / 2) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top;
+                this.blocks = this.blocks.concat(blockstemp);
+                blockstemp = [];
             }
 
             const snap = (drag: HTMLElement, blockIndex: number, blocko: Array<number>) => {
