@@ -340,6 +340,26 @@ export class FlowyDiagram extends LitElement {
 
     private blocks = Array<Block>();
 
+    private snap!:( rearrange: boolean, drag: HTMLElement, blockIndex: number, blocko: Array<number>) => void
+
+    public debugAddLinkedBlock( template:HTMLElement, blockToAttach:number ) {
+
+        if(this.blocks.length === 0) { 
+            throw 'error because it is a first block on the diagram!'
+        }
+
+        const block_index = this.blocks.findIndex( b => blockToAttach === b.id )
+
+        const blocka = this.blocks[block_index]
+
+        if (this.blockSnap(template, false, this.#blockByValue( blocka.id))) {
+            const blocko = this.blocks.map(a => a.id)
+            this.snap( false /*rearrange*/, template, block_index, blocko)
+        }
+
+    }
+
+
     #blockByValue(value: number | string) {
         return document.getElementById( `block${value}`) as HTMLElement
     }
@@ -348,7 +368,7 @@ export class FlowyDiagram extends LitElement {
     * deleteBlocks
     *  
     */
-    deleteBlock() {
+    deleteBlocks() {
         this.blocks = [];
         this._canvas.innerHTML = "<div class='indicator invisible'></div>";
     }
@@ -887,7 +907,7 @@ export class FlowyDiagram extends LitElement {
 
                         if (this.blockSnap(this.drag, false, this.#blockByValue( blocka.id))) {
                             const blocko = this.blocks.map(a => a.id)
-                            snap(this.rearrange, this.drag, block_index, blocko)
+                            this.snap(this.rearrange, this.drag, block_index, blocko)
                         } else {
                             active = false
                             this.removeSelection() 
@@ -932,7 +952,7 @@ export class FlowyDiagram extends LitElement {
 
                     const rejectDrop = () => {
                         const ii = blocko.indexOf(prevblock)
-                        snap( this.rearrange, this.drag!, ii, blocko);
+                        this.snap( this.rearrange, this.drag!, ii, blocko);
                     }
 
                     const blocko = this.blocks.map(a => a.id);
@@ -945,7 +965,7 @@ export class FlowyDiagram extends LitElement {
                             console.assert( b!==undefined, `block ${blocko[i]} not found!` )
 
                             if (this.blockMove(this.drag, b) ) {
-                                 snap(this.rearrange, this.drag, i, blocko);
+                                 this.snap(this.rearrange, this.drag, i, blocko);
                             }
                             else {
                                 rejectDrop()
@@ -1008,7 +1028,7 @@ export class FlowyDiagram extends LitElement {
                 blockstemp = [];
             }
 
-            const snap = ( rearrange: boolean, drag: HTMLElement, blockIndex: number, blocko: Array<number>) => {
+            this.snap = ( rearrange: boolean, drag: HTMLElement, blockIndex: number, blocko: Array<number>) => {
 
                 if (!rearrange) {
                     this.addDragToCanvas()
