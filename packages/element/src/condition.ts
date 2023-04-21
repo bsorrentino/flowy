@@ -21,8 +21,7 @@ export const  createTemplate = () =>
                 <p class="blockdesc">This is a condition element</p>
             </div>
         </div>
-    </div>    
-    `
+    </div>`
 
 
 export const addElement = ( diagram:FlowyDiagram, target:HTMLElement, parent?:HTMLElement ) => {
@@ -35,10 +34,8 @@ export const addElement = ( diagram:FlowyDiagram, target:HTMLElement, parent?:HT
     
     addConditionElement( target )
 
-    const el = branchElement('branch' )
-
-    console.debug( target )
-    diagram.debugAddLinkedBlock( el, target )
+    diagram.debugAddLinkedBlock( branchElement('branch' ), target )
+    diagram.debugAddLinkedBlock( branchElement('branch' ), target )
 
     return true
 }
@@ -52,8 +49,7 @@ const branchElement = (  value:string) => {
     el.classList.add( 'noselect')
     el.setAttribute( 'blockelemtype', `${TYPE}.${value}`)
 
-    const content = 
-        `
+    const content = html`
         <div>
             <div class='blockyleft'>
                 <img src=''>
