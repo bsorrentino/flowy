@@ -1,15 +1,13 @@
-import {html, render} from 'lit-html';
-import { unsafeHTML } from 'lit-html/directives/unsafe-html';
+import {render, html } from 'lit-html';
 import type { FlowyDiagram } from 'flowy-engine'
 
 const grabme_img = new URL('../assets/grabme.svg', import.meta.url)
 
-export const TYPE = 'condition'
+const TYPE = 'condition'
 
 export const  createTemplate = () => 
     html`
-    <div class="blockelem create-flowy noselect">
-        <input type="hidden" name="blockelemtype" class="blockelemtype" value="${TYPE}">
+    <div class="blockelem create-flowy noselect" blockelemtype="${TYPE}">
         <div class="grabme">
             <img src="${grabme_img}">
         </div>
@@ -29,15 +27,48 @@ export const  createTemplate = () =>
 
 export const addElement = ( diagram:FlowyDiagram, target:HTMLElement, parent?:HTMLElement ) => {
 
-    const value = (target.querySelector(".blockelemtype") as HTMLDataElement).value
+    if( !parent ) return false // GUARD
 
-    if( value!==TYPE) return false // GUARD
+    const value = target.getAttribute('blockelemtype')
 
+    if( value!==TYPE ) return false // GUARD
+    
     addConditionElement( target )
+
+    const el = branchElement('branch' )
+
+    console.debug( target )
+    diagram.debugAddLinkedBlock( el, target )
 
     return true
 }
 
+
+const branchElement = (  value:string) => {
+    
+    const el = document.createElement( 'div' )
+    el.classList.add( 'blockelem')
+    el.classList.add( 'create-flowy')
+    el.classList.add( 'noselect')
+    el.setAttribute( 'blockelemtype', `${TYPE}.${value}`)
+
+    const content = 
+        `
+        <div>
+            <div class='blockyleft'>
+                <img src=''>
+                <p class='blockyname'>CONDITION</p>
+            </div>
+            <div class='blockyright'>
+                <img src=''>
+            </div>
+            <div class='blockydiv'></div>
+            <div class='blockyinfo'>condition branch</div>
+        </div>
+        `
+    render( content, el )    
+    return el
+}
 
 const addConditionElement = ( target:HTMLElement, ) =>  {
     
@@ -56,5 +87,7 @@ const addConditionElement = ( target:HTMLElement, ) =>  {
         </div>
         `
 
-    return render( content, target )
+    target.innerHTML = '' // delete children
+    render( content, target )
+
 }

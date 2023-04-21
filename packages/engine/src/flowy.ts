@@ -70,7 +70,7 @@ function hasParentClass(element: HTMLElement, classname: string): boolean {
 const isRightClick = <E extends UIEvent>( event:E ) => ( event instanceof MouseEvent && event.button == 2 /* right click */)
 
 
-const blockIdNumber = ( el: HTMLElement ) => {
+export const blockIdNumber = ( el: HTMLElement ) => {
                 
     const value = /block(\d+)/.exec(el!.id)![1]
 
@@ -340,22 +340,47 @@ export class FlowyDiagram extends LitElement {
 
     private blocks = Array<Block>();
 
+    private get nexBlockId() {
+
+        if (this.blocks.length === 0) {
+
+            return `block0`
+            
+        } 
+
+        const max = this.blocks.reduce((result, a) => Math.max(result, a.id), 0)
+
+        return `block${max + 1}`
+        
+    }
+
     private snap!:( rearrange: boolean, drag: HTMLElement, blockIndex: number, blocko: Array<number>) => void
 
-    public debugAddLinkedBlock( template:HTMLElement, blockToAttach:number ) {
+    public debugAddLinkedBlock( template:HTMLElement, blockToAttach:HTMLElement ) {
 
         if(this.blocks.length === 0) { 
             throw 'error because it is a first block on the diagram!'
         }
 
-        const block_index = this.blocks.findIndex( b => blockToAttach === b.id )
+        const interval = setInterval( () => {
+            const bid = blockIdNumber(blockToAttach)
 
-        const blocka = this.blocks[block_index]
-
-        if (this.blockSnap(template, false, this.#blockByValue( blocka.id))) {
+            const block_index = this.blocks.findIndex( b => bid === b.id )
+            if( block_index == -1 ) return
+    
+            clearInterval( interval )
+            
+            template.setAttribute( 'id', this.nexBlockId)
+            this._canvas.appendChild( template )
+    
             const blocko = this.blocks.map(a => a.id)
-            this.snap( false /*rearrange*/, template, block_index, blocko)
-        }
+            // const blocka = this.blocks[block_index]
+            // if (this.blockSnap(template, false, this.#blockByValue( blocka.id))) {
+                this.snap( false /*rearrange*/, template, block_index, blocko)
+            // }
+    
+        }, 100)
+
 
     }
 
@@ -668,18 +693,8 @@ export class FlowyDiagram extends LitElement {
                     newNode.classList.add("block");
                     newNode.classList.remove("create-flowy");
 
-                    if (this.blocks.length === 0) {
-
-                        newNode.setAttribute( 'id', `block${this.blocks.length}`)
-                        document.body.appendChild(newNode);
-                        
-                    } else {
-
-                        const max = this.blocks.reduce((result, a) => Math.max(result, a.id), 0)
-
-                        newNode.setAttribute( 'id', `block${max + 1}`)
-                        document.body.appendChild(newNode);
-                    }
+                    newNode.setAttribute( 'id', this.nexBlockId )
+                    document.body.appendChild(newNode);
                     
                     this.drag = newNode
 
