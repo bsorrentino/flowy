@@ -1,59 +1,73 @@
 import {render, html } from 'lit-html';
 import type { FlowyDiagram } from 'flowy-engine'
+import { numBlockLinked, isBlockAlreadyLinked, blockType } from './element-utils'
 
 const grabme_img = new URL('../assets/grabme.svg', import.meta.url)
 
-const TYPE = 'condition'
+const CONDITION_TYPE = 'condition'
+const CONDITION_TEST_TYPE = `${CONDITION_TYPE}.test`
 
-export const  createTemplate = () => 
-    html`
-    <div class="blockelem create-flowy noselect" blockelemtype="${TYPE}">
-        <div class="grabme">
-            <img src="${grabme_img}">
-        </div>
-        <div class="blockin">
+export const  createConditionTemplates = () => 
+    [
+        html`
+        <div class="blockelem create-flowy noselect" blockelemtype="${CONDITION_TYPE}">
+            <div class="grabme">
+                <img src="${grabme_img}">
+            </div>
+            <div class="blockin">
+                <div class="blockico">
+                    <span></span>
+                    <img src="">
+                </div>
+                <div class="blocktext">
+                    <p class="blocktitle">Condition</p>
+                    <p class="blockdesc">This is a condition element</p>
+                </div>
+            </div>
+        </div>`,
+        html`
+        <div class="blockelem create-flowy noselect" blockelemtype="${CONDITION_TEST_TYPE}">
+            <div class="grabme">
+                <img src="${grabme_img}">
+            </div>
             <div class="blockico">
                 <span></span>
                 <img src="">
             </div>
-            <div class="blocktext">
-                <p class="blocktitle">Condition</p>
-                <p class="blockdesc">This is a condition element</p>
+            <div class="blockin">
+                <div class="blocktext">
+                    <p class="blocktitle">Test</p>
+                    <p class="blockdesc">This is a condition test element</p>
+                </div>
             </div>
-        </div>
-    </div>`
-
+        </div>`
+    ]
 
 export const addElement = ( diagram:FlowyDiagram, target:HTMLElement, parent?:HTMLElement ) => {
 
     if( !parent ) return false // GUARD
 
-    const value = target.getAttribute('blockelemtype')
-
-    if( value!==TYPE ) return false // GUARD
-    
-    addConditionElement( target )
-
-    diagram.debugAddLinkedBlock( branchElement('branch' ), target )
-    diagram.debugAddLinkedBlock( branchElement('branch' ), target )
-
-    return true
+    switch( blockType(target) ) {
+        case CONDITION_TYPE:
+            return addConditionElement( diagram, target, parent )
+        case CONDITION_TEST_TYPE:  
+            return addConditionTestElement( diagram, target, parent )
+        default:
+            return false
+    }
 }
 
+const addConditionTestElement = ( diagram:FlowyDiagram, target:HTMLElement, parent?: HTMLElement  ) =>  {
+    if( !parent ) return false // GUARD
+    if( blockType(parent) !== CONDITION_TYPE ) return false
+    if( numBlockLinked( diagram, parent.id ) >= 2 ) return false // GUARD
 
-const branchElement = (  value:string) => {
-    
-    const el = document.createElement( 'div' )
-    el.classList.add( 'blockelem')
-    el.classList.add( 'create-flowy')
-    el.classList.add( 'noselect')
-    el.setAttribute( 'blockelemtype', `${TYPE}.${value}`)
-
-    const content = html`
+    const content = 
+        html`
         <div>
             <div class='blockyleft'>
                 <img src=''>
-                <p class='blockyname'>CONDITION</p>
+                <p class='blockyname'>TEST</p>
             </div>
             <div class='blockyright'>
                 <img src=''>
@@ -62,12 +76,18 @@ const branchElement = (  value:string) => {
             <div class='blockyinfo'>condition branch</div>
         </div>
         `
-    render( content, el )    
-    return el
+    target.innerHTML = '' // delete children
+    render( content, target )
+
+    return true
 }
 
-const addConditionElement = ( target:HTMLElement, ) =>  {
-    
+const addConditionElement = (diagram:FlowyDiagram, target:HTMLElement, parent?: HTMLElement ) =>  {
+
+    if( parent && isBlockAlreadyLinked( diagram, parent.id )) { // GUARD
+        return false
+    }
+
     const content = 
         html`
         <div>
@@ -86,4 +106,5 @@ const addConditionElement = ( target:HTMLElement, ) =>  {
     target.innerHTML = '' // delete children
     render( content, target )
 
+    return true
 }

@@ -1,9 +1,10 @@
 import {render,html} from 'lit-html';
 import { unsafeHTML } from 'lit-html/directives/unsafe-html';
 import type { FlowyDiagram } from 'flowy-engine'
-import './element.css'
-
+import { blockType, isBlockAlreadyLinked } from './element-utils'
 import * as condition from './condition'
+
+import './element.css'
 
 const mode_img = new URL('../assets/more.svg', import.meta.url)
 const grabme_img = new URL('../assets/grabme.svg', import.meta.url)
@@ -28,22 +29,6 @@ const dropdown_img = new URL('../assets/dropdown.svg', import.meta.url)
 const checkon_img = new URL('../assets/checkon.svg', import.meta.url)
 const checkoff_img = new URL('../assets/checkoff.svg', import.meta.url)
 
-function isBlockAlreadyLinked( diagram:FlowyDiagram, id:string|number  ) {
-
-    let blockId:string =  ( typeof(id) == 'number' ) ?  `block${id}` : id
-
-    // const selector = `div[parent='${blockId}']`
-    const selector = `.arrowblock[source='${blockId}']`
-    const e = diagram.querySelector( selector )
-
-    if( e ) {
-        console.debug( `reject link to element (${blockId})` )
-        return true
-    }
-
-    return false
-
-}
 
 export function initElement( diagram:FlowyDiagram, templates_container:HTMLElement, properties_container:HTMLElement ) {
 
@@ -77,12 +62,11 @@ export function initElement( diagram:FlowyDiagram, templates_container:HTMLEleme
 
         const { target, parent } = e.detail
 
-        if( parent && isBlockAlreadyLinked( diagram, parent.id )) {
+        if( !addElement( diagram, target, parent ) ) {
             e.preventDefault()
             return
         }
-
-        addElement( diagram, target, parent  ) 
+        
 
     }, false )
 
@@ -104,51 +88,40 @@ export function initElement( diagram:FlowyDiagram, templates_container:HTMLEleme
 
 const addElement = ( diagram:FlowyDiagram, target:HTMLElement, parent?:HTMLElement ) => {
 
-    const value = target.getAttribute('blockelemtype')
-
-    switch( value ) {
+    switch( blockType(target) ) {
         case "1":
-            _addElement( diagram, target, eyeblue_img, 'New visitor', 'When a <span>new visitor</span> goes to <span>Site 1</span>')
-            break
+            return _addElement( diagram, target, parent ?? null, eyeblue_img, 'New visitor', 'When a <span>new visitor</span> goes to <span>Site 1</span>')
         case "2" :
-            _addElement( diagram, target, actionblue_img, 'Action is performed', 'When <span>Action 1</span> is performed')
-            break
+            return _addElement( diagram, target, parent ?? null, actionblue_img, 'Action is performed', 'When <span>Action 1</span> is performed')
         case "3":
-            _addElement( diagram, target, timeblue_img, 'Time has passed', 'When <span>10 seconds</span> have passed</div>')
-            break
+            return _addElement( diagram, target, parent ?? null, timeblue_img, 'Time has passed', 'When <span>10 seconds</span> have passed</div>')
         case "4":
-            _addElement( diagram, target, errorblue_img, 'Error prompt', 'When <span>Error 1</span> is triggered</div>')
-            break
+            return _addElement( diagram, target, parent ?? null, errorblue_img, 'Error prompt', 'When <span>Error 1</span> is triggered</div>')
         case "5":
-            _addElement( diagram, target, databaseorange_img, 'New database entry', 'Add <span>Data object</span> to <span>Database 1</span>');
-            break
+            return _addElement( diagram, target, parent ?? null, databaseorange_img, 'New database entry', 'Add <span>Data object</span> to <span>Database 1</span>');
         case "6":
-            _addElement( diagram, target, databaseorange_img, 'Update database', 'Update <span>Database 1</span>');
-            break
+            return _addElement( diagram, target, parent ?? null, databaseorange_img, 'Update database', 'Update <span>Database 1</span>');
         case "7":
-            _addElement( diagram, target, actionorange_img, 'Perform an action', 'Perform <span>Action 1</span>');
-            break
+            return _addElement( diagram, target, parent ?? null, actionorange_img, 'Perform an action', 'Perform <span>Action 1</span>');
         case "8":
-            _addElement( diagram, target, twitterorange_img, 'Make a tweet', 'Tweet <span>Query 1</span> with the account <span>@alyssaxuu</span>');
-            break
+            return _addElement( diagram, target, parent ?? null, twitterorange_img, 'Make a tweet', 'Tweet <span>Query 1</span> with the account <span>@alyssaxuu</span>');
         case "9":
-            _addElement( diagram, target, logred_img, 'Add new log entry', 'Add new <span>success</span> log entry');
-            break
+            return _addElement( diagram, target, parent ?? null, logred_img, 'Add new log entry', 'Add new <span>success</span> log entry');
         case "10":
-            _addElement( diagram, target, logred_img, 'Update logs', 'Edit <span>Log Entry 1</span>');
-            break
+            return _addElement( diagram, target, parent ?? null, logred_img, 'Update logs', 'Edit <span>Log Entry 1</span>');
         case "11":
-            _addElement( diagram, target, errorred_img, 'Prompt an error', 'Trigger <span>Error 1</span>');
-            break
+            return _addElement( diagram, target, parent ?? null, errorred_img, 'Prompt an error', 'Trigger <span>Error 1</span>');
         default:
             return condition.addElement( diagram, target, parent  )  
     }
-
-    return true;
 }
 
-const _addElement = ( diagram:FlowyDiagram, target:HTMLElement, image_url:URL, title:string, description:string ) =>  {
+const _addElement = ( diagram: FlowyDiagram, target:HTMLElement, parent:HTMLElement|null, image_url:URL, title:string, description:string ) =>  {
     
+    if( parent && isBlockAlreadyLinked( diagram, parent.id )) {
+        return false
+    }
+
     const content = 
         html`
         <div>
@@ -166,7 +139,9 @@ const _addElement = ( diagram:FlowyDiagram, target:HTMLElement, image_url:URL, t
     
     target.innerHTML = '' // delete children
 
-    return render( content, target )
+    render( content, target )
+
+    return true
 }
 
 const  _createTemplate = ( value:number, image_url:URL, title:string, description:string ) => 
@@ -190,7 +165,7 @@ const  _createTemplate = ( value:number, image_url:URL, title:string, descriptio
 
 const _addTemplates =  ( target:HTMLElement ) => {
 
-    const templates = [
+    let templates = [
             _createTemplate( 1, eye_img, 'New visitor', 'Triggers when somebody visits a specified page'),
             _createTemplate( 2, action_img, 'Action is performed', 'Triggers when somebody performs a specified action'),
             _createTemplate( 3, time_img, 'Time has passed', 'Triggers after a specified amount of time'),
@@ -203,9 +178,10 @@ const _addTemplates =  ( target:HTMLElement ) => {
 
             _createTemplate(9, log_img, 'Add new log entry', 'Adds a new log entry to this project'),
             _createTemplate(10, log_img, 'Update logs', 'Edits and deletes log entries in this project'),
-            _createTemplate(11, error_img, 'Prompt an error', 'Triggers a specified error'),
-            condition.createTemplate(),
+            _createTemplate(11, error_img, 'Prompt an error', 'Triggers a specified error'),  
     ]
+
+    templates = templates.concat( condition.createConditionTemplates() )
 
     render(html`${templates}`, target)
         
