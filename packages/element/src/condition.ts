@@ -49,12 +49,45 @@ export const addElement = ( diagram:FlowyDiagram, target:HTMLElement, parent?:HT
 
     switch( blockType(target) ) {
         case CONDITION_TYPE:
-            return addConditionElement( diagram, target, parent )
+            addConditionElement( diagram, target, parent )
+            // diagram.debugAddLinkedBlock( conditionTestElement( '148px', '413.5px' ), target   )
+            // diagram.debugAddLinkedBlock( conditionTestElement( '136px', '460.5px' ), target   )
+            return true
         case CONDITION_TEST_TYPE:  
             return addConditionTestElement( diagram, target, parent )
         default:
             return false
     }
+}
+
+const conditionTestElement = ( left: string, top: string ) =>  {
+
+    const target = document.createElement( 'div' )
+    target.classList.add( 'blockelem' )
+    target.classList.add( 'create-flowy' )
+    target.classList.add( 'noselect' )
+    target.setAttribute( 'blockelemtype', CONDITION_TEST_TYPE)
+
+    const content = 
+        html`
+        <div>
+            <div class='blockyleft'>
+                <img src=''>
+                <p class='blockyname'>TEST</p>
+            </div>
+            <div class='blockyright'>
+                <img src=''>
+            </div>
+            <div class='blockydiv'></div>
+            <div class='blockyinfo'>condition branch</div>
+        </div>
+        `
+    render( content, target )
+
+    target.style.left = left
+    target.style.top = top
+
+    return target
 }
 
 const addConditionTestElement = ( diagram:FlowyDiagram, target:HTMLElement, parent?: HTMLElement  ) =>  {
@@ -81,6 +114,7 @@ const addConditionTestElement = ( diagram:FlowyDiagram, target:HTMLElement, pare
 
     return true
 }
+
 
 const addConditionElement = (diagram:FlowyDiagram, target:HTMLElement, parent?: HTMLElement ) =>  {
 

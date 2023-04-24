@@ -398,6 +398,7 @@ export class FlowyDiagram extends LitElement {
             template.setAttribute( 'id', this.nexBlockId)
             
             const blocko = this.blocks.map(a => a.id)
+
             // const blocka = this.blocks[block_index]
             // if (this.blockSnap(template, false, this.#blockByValue( blocka.id))) {
                 this.snap( false /*rearrange*/, template, block_index, blocko)
@@ -559,16 +560,15 @@ export class FlowyDiagram extends LitElement {
     private moveBlock!: (event: any) => void
     private touchblock!: (event: any) => void
 
-    private checkAttach( id: number) { 
+    private checkAttach( block: HTMLElement, id: number) { 
 
-        if( !this.drag ) return // GUARD
         const { _canvas: canvas_div, spacing_x:paddingx, spacing_y:paddingy } = this;
 
         const b = this.blocks.find( a => a.id == id  )!
         console.assert( b!==undefined, `blocks[${id}] not found!`)
 
-        const xpos = (this.drag.getBoundingClientRect().left + window.scrollX) + (parseInt(window.getComputedStyle(this.drag).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left;
-        const ypos = (this.drag.getBoundingClientRect().top + window.scrollY) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top;
+        const xpos = (block.getBoundingClientRect().left + window.scrollX) + (parseInt(window.getComputedStyle(block).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left;
+        const ypos = (block.getBoundingClientRect().top + window.scrollY) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top;
         
         if (xpos >= b.x - (b.width / 2) - paddingx && xpos <= b.x + (b.width / 2) + paddingx && ypos >=b.y - (b.height / 2) && ypos <= b.y + b.height) {
             return true;
@@ -664,8 +664,6 @@ export class FlowyDiagram extends LitElement {
             el.classList.add('indicator');
             el.classList.add('invisible');
             canvas_div.appendChild(el);
-
-
 
             this.beginDrag = (event:UIEvent) => {
 
@@ -850,7 +848,7 @@ export class FlowyDiagram extends LitElement {
                     // let xpos = (this.drag.getBoundingClientRect().left + window.scrollX) + (parseInt(window.getComputedStyle(this.drag).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left;
                     // let ypos = (this.drag.getBoundingClientRect().top + window.scrollY) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top;
                     
-                    const blocka = this.blocks.find( b => this.checkAttach( b.id ) )
+                    const blocka = this.blocks.find( b => this.checkAttach( this.drag!, b.id ) )
                     if( blocka ) {
                         const block = this.#blockByValue(blocka.id)
 
@@ -903,7 +901,7 @@ export class FlowyDiagram extends LitElement {
                         return
                     }
 
-                    const block_index = this.blocks.findIndex( b => this.checkAttach( b.id ) )
+                    const block_index = this.blocks.findIndex( b => this.checkAttach( this.drag!, b.id ) )
                     if( block_index != -1 ) {
                         active = false
 
@@ -940,7 +938,7 @@ export class FlowyDiagram extends LitElement {
                     const blocko = this.blocks.map(a => a.id);
 
                     for (let i = 0; i < this.blocks.length; i++) {
-                        if ( this.checkAttach( blocko[i])) {
+                        if ( this.checkAttach( this.drag, blocko[i])) {
                             active = false;
 
                             const b = this.blocks.find(id => id.id == blocko[i])! 
@@ -1015,95 +1013,101 @@ export class FlowyDiagram extends LitElement {
                 if (!rearrange) {
                     this.addBlockElement( drag )
                 }
-                let totalwidth = 0;
-                let totalremove = 0;
+                
+                const block = this.blocks.find(a => a.id == blocko[blockIndex])!
+                const block_parent = this.blocks.find(id => id.parent == blocko[blockIndex])!
+                const children_blocks = this.blocks.filter(id => id.parent == blocko[blockIndex])
 
-                for (let w = 0; w < this.blocks.filter(id => id.parent == blocko[blockIndex]).length; w++) {
-                    let children = this.blocks.filter(id => id.parent == blocko[blockIndex])[w];
-                    if (children.childwidth > children.width) {
-                        totalwidth += children.childwidth + paddingx;
-                    } else {
-                        totalwidth += children.width + paddingx;
-                    }
-                }
+                let totalremove = 0;
+                let totalwidth = children_blocks
+                    .map( children => Math.max( children.childwidth, children.width ))
+                    .reduce( (result, width ) => result + width + paddingx, 0 )
 
                 totalwidth += parseInt(window.getComputedStyle(drag).width);
+  
+                children_blocks.forEach( children => {
 
-                for (let w = 0; w < this.blocks.filter(id => id.parent == blocko[blockIndex]).length; w++) {
-                    let children = this.blocks.filter(id => id.parent == blocko[blockIndex])[w];
                     if (children.childwidth > children.width) {
-                        this.#blockByValue(children.id).style.left = this.blocks.filter(a => a.id == blocko[blockIndex])[0].x - (totalwidth / 2) + totalremove + (children.childwidth / 2) - (children.width / 2) + "px";
-                        children.x = this.blocks.filter(id => id.parent == blocko[blockIndex])[0].x - (totalwidth / 2) + totalremove + (children.childwidth / 2);
+                        this.#blockByValue(children.id).style.left = block.x - (totalwidth / 2) + totalremove + (children.childwidth / 2) - (children.width / 2) + "px";
+                        children.x = block_parent.x - (totalwidth / 2) + totalremove + (children.childwidth / 2);
                         totalremove += children.childwidth + paddingx;
                     } else {
-                        this.#blockByValue(children.id).style.left = this.blocks.filter(a => a.id == blocko[blockIndex])[0].x - (totalwidth / 2) + totalremove + "px";
-                        children.x = this.blocks.filter(id => id.parent == blocko[blockIndex])[0].x - (totalwidth / 2) + totalremove + (children.width / 2);
+                        this.#blockByValue(children.id).style.left = block.x - (totalwidth / 2) + totalremove + "px";
+                        children.x = block_parent.x - (totalwidth / 2) + totalremove + (children.width / 2);
                         totalremove += children.width + paddingx;
                     }
-                }
-                drag.style.left = this.blocks.filter(id => id.id == blocko[blockIndex])[0].x - (totalwidth / 2) + totalremove - (window.scrollX + this.absx) + canvas_div.scrollLeft + canvas_div.getBoundingClientRect().left + "px";
-                drag.style.top = this.blocks.filter(id => id.id == blocko[blockIndex])[0].y + (this.blocks.filter(id => id.id == blocko[blockIndex])[0].height / 2) + paddingy - (window.scrollY + this.absy) + canvas_div.getBoundingClientRect().top + "px";
+
+                })
+
+                drag.style.left = block.x - (totalwidth / 2) + totalremove - (window.scrollX + this.absx) + canvas_div.scrollLeft + canvas_div.getBoundingClientRect().left + "px";
+                drag.style.top = block.y + (block.height / 2) + paddingy - (window.scrollY + this.absy) + canvas_div.getBoundingClientRect().top + "px";
+                
                 if (rearrange) {
+
                     const drag_block = blockstemp.find(a => a.id == blockIdNumber(drag))!
                     drag_block.x = (drag.getBoundingClientRect().left + window.scrollX) + (parseInt(window.getComputedStyle(drag).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left;
                     drag_block.y = (drag.getBoundingClientRect().top + window.scrollY) + (parseInt(window.getComputedStyle(drag).height) / 2) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top;
-                    drag_block.parent = blocko[blockIndex];
-                    for (let w = 0; w < blockstemp.length; w++) {
-                        if (blockstemp[w].id != blockIdNumber(drag)) {
-                            const blockParent = this.#blockByValue(blockstemp[w].id)
-                            const arrowParent = this.#arrowByValue(blockstemp[w].id)
-                            blockParent.style.left = (blockParent.getBoundingClientRect().left + window.scrollX) - (window.scrollX + canvas_div.getBoundingClientRect().left) + canvas_div.scrollLeft + "px";
-                            blockParent.style.top = (blockParent.getBoundingClientRect().top + window.scrollY) - (window.scrollY + canvas_div.getBoundingClientRect().top) + canvas_div.scrollTop + "px";
-                            arrowParent.style.left = (arrowParent.getBoundingClientRect().left + window.scrollX) - (window.scrollX + canvas_div.getBoundingClientRect().left) + canvas_div.scrollLeft + 20 + "px";
-                            arrowParent.style.top = (arrowParent.getBoundingClientRect().top + window.scrollY) - (window.scrollY + canvas_div.getBoundingClientRect().top) + canvas_div.scrollTop + "px";
-                            canvas_div.appendChild(blockParent);
-                            canvas_div.appendChild(arrowParent);
+                    drag_block.parent = blocko[blockIndex]
 
-                            blockstemp[w].x = (blockParent.getBoundingClientRect().left + window.scrollX) + (parseInt(window.getComputedStyle(blockParent).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left;
-                            blockstemp[w].y = (blockParent.getBoundingClientRect().top + window.scrollY) + (parseInt(window.getComputedStyle(blockParent).height) / 2) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top;
-                        }
-                    }
+                    blockstemp.filter( b => b.id != blockIdNumber(drag) ).forEach( b => {
+
+                        const blockParent = this.#blockByValue(b.id)
+                        const arrowParent = this.#arrowByValue(b.id)
+                        blockParent.style.left = (blockParent.getBoundingClientRect().left + window.scrollX) - (window.scrollX + canvas_div.getBoundingClientRect().left) + canvas_div.scrollLeft + "px";
+                        blockParent.style.top = (blockParent.getBoundingClientRect().top + window.scrollY) - (window.scrollY + canvas_div.getBoundingClientRect().top) + canvas_div.scrollTop + "px";
+                        arrowParent.style.left = (arrowParent.getBoundingClientRect().left + window.scrollX) - (window.scrollX + canvas_div.getBoundingClientRect().left) + canvas_div.scrollLeft + 20 + "px";
+                        arrowParent.style.top = (arrowParent.getBoundingClientRect().top + window.scrollY) - (window.scrollY + canvas_div.getBoundingClientRect().top) + canvas_div.scrollTop + "px";
+                        canvas_div.appendChild(blockParent);
+                        canvas_div.appendChild(arrowParent);
+
+                        b.x = (blockParent.getBoundingClientRect().left + window.scrollX) + (parseInt(window.getComputedStyle(blockParent).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left;
+                        b.y = (blockParent.getBoundingClientRect().top + window.scrollY) + (parseInt(window.getComputedStyle(blockParent).height) / 2) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top;
+
+                    })
+
                     this.blocks = this.blocks.concat(blockstemp);
                     blockstemp = [];
+
                 } else {
+
                     this.addDataBlockFromElement( drag, { parent: blocko[blockIndex] } )
+
                 }
 
                 const arrowblock = this.blocks.find(a => a.id == blockIdNumber( drag ))!
-                const arrowx = arrowblock.x - this.blocks.find(a => a.id == blocko[blockIndex])!.x + 20;
+                const arrowx = arrowblock.x - block.x + 20;
                 const arrowy = paddingy;
                 
                 this.drawArrow( drag, arrowblock, arrowx, arrowy, blocko[blockIndex]);
 
-                if (this.blocks.filter(a => a.id == blocko[blockIndex])[0].parent != -1) {
-                    let flag = false;
+                if (block.parent != -1) {
+
                     let idval = blocko[blockIndex];
-                    while (!flag) {
-                        if (this.blocks.filter(a => a.id == idval)[0].parent == -1) {
-                            flag = true;
-                        } else {
-                            let zwidth = 0;
-                            for (let w = 0; w < this.blocks.filter(id => id.parent == idval).length; w++) {
-                                let children = this.blocks.filter(id => id.parent == idval)[w];
-                                if (children.childwidth > children.width) {
-                                    if (w == this.blocks.filter(id => id.parent == idval).length - 1) {
-                                        zwidth += children.childwidth;
-                                    } else {
-                                        zwidth += children.childwidth + paddingx;
-                                    }
-                                } else {
-                                    if (w == this.blocks.filter(id => id.parent == idval).length - 1) {
-                                        zwidth += children.width;
-                                    } else {
-                                        zwidth += children.width + paddingx;
-                                    }
-                                }
-                            }
-                            this.blocks.filter(a => a.id == idval)[0].childwidth = zwidth;
-                            idval = this.blocks.filter(a => a.id == idval)[0].parent;
-                        }
+                    let bblocks = this.blocks.filter(a => a.id == idval)
+
+                    while (true) {
+
+                        if (bblocks[0].parent == -1) {
+                            break
+                        } 
+
+                        let zwidth = 0;
+                        bblocks.forEach( (children, w) => {
+
+                            const bb = this.blocks.filter(id => id.parent == idval)
+
+                            const width = Math.max(children.childwidth, children.width)
+
+                            zwidth += (w == bb.length - 1) ? width : width + paddingx 
+
+                        })
+
+                        bblocks[0].childwidth = zwidth;
+                        idval = bblocks[0].parent;
+                        bblocks = this.blocks.filter(a => a.id == idval)
+
                     }
-                    this.blocks.filter(id => id.id == idval)[0].childwidth = totalwidth;
+                    bblocks[0].childwidth = totalwidth;
                 }
 
                 this.rearrangeMe();
