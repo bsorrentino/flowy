@@ -337,7 +337,7 @@ export class FlowyDiagram extends LitElement {
 
     private blocks = Array<Block>();
 
-    addDataBlockFromElement( block: HTMLElement   ) {
+    addDataBlockFromElement( block: HTMLElement, data?: Partial<Block>   ) {
         const { width: block_width, height: block_height } = window.getComputedStyle(block)
         const { left: block_left, top: block_top } = block.getBoundingClientRect()
         const { left, top } = this._canvas.getBoundingClientRect()
@@ -351,12 +351,11 @@ export class FlowyDiagram extends LitElement {
             x: (block_left + scrollX) + (parseInt(block_width) / 2) + scrollLeft - left,
             y: (block_top + scrollY) + (parseInt(block_height) / 2) + scrollTop - top,
             width: parseInt(block_width),
-            height: parseInt(block_height)
+            height: parseInt(block_height),
+            ...data
         }
 
         this.blocks.push( b )
-
-        return b
 
     }
 
@@ -1067,7 +1066,7 @@ export class FlowyDiagram extends LitElement {
                     this.blocks = this.blocks.concat(blockstemp);
                     blockstemp = [];
                 } else {
-                    this.addDataBlockFromElement( drag ).parent = blocko[blockIndex]
+                    this.addDataBlockFromElement( drag, { parent: blocko[blockIndex] } )
                 }
 
                 const arrowblock = this.blocks.find(a => a.id == blockIdNumber( drag ))!
