@@ -25,6 +25,7 @@ export const  createConditionTemplates = () =>
                 </div>
             </div>
         </div>`,
+/*
         html`
         <div class="blockelem create-flowy noselect" blockelemtype="${CONDITION_TEST_TYPE}">
             <div class="grabme">
@@ -41,6 +42,7 @@ export const  createConditionTemplates = () =>
                 </div>
             </div>
         </div>`
+*/
     ]
 
 export const addElement = ( diagram:FlowyDiagram, target:HTMLElement, parent?:HTMLElement ) => {
@@ -52,8 +54,8 @@ export const addElement = ( diagram:FlowyDiagram, target:HTMLElement, parent?:HT
             const result =  addConditionElement( diagram, target, parent )
             // diagram.debugAddLinkedBlock( conditionTestElement( '148px', '413.5px' ), target   )
             if(  result ) {
-                diagram.debugAddLinkedBlock( conditionTestTemplate(), target )
-                diagram.debugAddLinkedBlock( conditionTestTemplate(), target )
+                diagram.addLinkedBlock( conditionTestTemplate(), target )
+                diagram.addLinkedBlock( conditionTestTemplate(), target )
             }
             return result
         case CONDITION_TEST_TYPE:  

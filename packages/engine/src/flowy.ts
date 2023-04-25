@@ -189,6 +189,31 @@ export class FlowyDiagram extends LitElement {
     private load!: () => void
 
     /**
+     * [showIndicator description]
+     *
+     * @param   {HTMLElement}  block  [block description]
+     *
+     * @return  {[type]}              [return description]
+     */
+    private showIndicator( block: HTMLElement ):void {
+        block.appendChild(this._indicator);
+        this._indicator.style.left = (block.offsetWidth / 2) - 5 + "px";
+        this._indicator.style.top = block.offsetHeight + "px";
+        this._indicator.classList.remove("invisible");
+    }
+
+    /**
+     * [hideIndicator description]
+     *
+     * @return  {[type]}  [return description]
+     */
+    private hideIndicator():void {
+        if (!this._indicator.classList.contains("invisible")) {
+            this._indicator.classList.add("invisible");
+        }
+    }
+
+    /**
      * traverse the diagram and generate a JSON representation
      */
     output(): Output {
@@ -498,9 +523,7 @@ export class FlowyDiagram extends LitElement {
 
         this.dispatchTemplateReleased( original );
         
-        if (!this._indicator.classList.contains("invisible")) {
-            this._indicator.classList.add("invisible");
-        }
+        this.hideIndicator()
         
         // ACTIVE STRATEGY
         if (ctx.active) {
@@ -711,16 +734,10 @@ export class FlowyDiagram extends LitElement {
             const blocka = this.blocks.find( b => this.checkAttach( drag, b.id ) )
             if( blocka ) {
                 const block = this.#blockByValue(blocka.id)
-
-                block.appendChild(this._indicator);
-                this._indicator.style.left = (block.offsetWidth / 2) - 5 + "px";
-                this._indicator.style.top = block.offsetHeight + "px";
-                this._indicator.classList.remove("invisible");
+                this.showIndicator( block )
             }
             else {
-                if (!this._indicator.classList.contains("invisible")) {
-                    this._indicator.classList.add("invisible");
-                }
+                this.hideIndicator()
             }
             
         }
@@ -1107,7 +1124,6 @@ export class FlowyDiagram extends LitElement {
         ctx.element.parentNode?.removeChild(ctx.element)
     }
 
-  
     /**
      * disable shadow root
      * 
@@ -1152,7 +1168,6 @@ export class FlowyDiagram extends LitElement {
             el.classList.add('indicator');
             el.classList.add('invisible');
             canvas_div.appendChild(el);
-
 
             const beginDragHandler = (event:UIEvent) => {
 
