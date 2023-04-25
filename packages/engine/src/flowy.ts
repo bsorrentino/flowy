@@ -91,8 +91,6 @@ interface DragContext {
     mouse_y:number,
     absx: number,
     absy:number,
-
-
 }
 
 /**
@@ -396,9 +394,209 @@ export class FlowyDiagram extends LitElement {
         
     }
 
-    moveBlock( ctx : DragContext ) {
+    private dropFirstBlock( ctx: Pick<DragContext, 'element' | 'absy' | 'absx' | 'active' | 'rearrange'>) {
+        const { element: block, absy, absx } = ctx
+        if( !block ) return // GUARD
 
-        const { element: drag, mouse_x, mouse_y } = ctx
+        const { canvas_div } = this
+
+        this.blockSnap(block, true, undefined)
+
+        ctx.active = false;
+        
+        block.style.top = (block.getBoundingClientRect().top + window.scrollY) - (absy + window.scrollY) + canvas_div.scrollTop + "px";
+        block.style.left = (block.getBoundingClientRect().left + window.scrollX) - (absx + window.scrollX) + canvas_div.scrollLeft + "px";
+        
+        this.addBlockElement( ctx )
+
+        this.addDataBlockFromElement( block )
+    }
+
+    private rearrangeFirstBlock( ctx: Pick<DragContext, 'element' | 'blockstemp' |'absx' | 'absy'>) {
+        const { element: block, absx, absy  } = ctx
+        if( !block ) return // GUARD
+
+        const { canvas_div } = this
+
+        for (let w = 0; w < ctx.blockstemp.length; w++) {
+            if (ctx.blockstemp[w].id != blockIdNumber( block )) {
+                const blockParent = this.#blockByValue(ctx.blockstemp[w].id)
+                const arrowParent = this.#arrowByValue(ctx.blockstemp[w].id)
+                blockParent.style.left = (blockParent.getBoundingClientRect().left + window.scrollX) - (window.scrollX) + canvas_div.scrollLeft - 1 - absx + "px";
+                blockParent.style.top = (blockParent.getBoundingClientRect().top + window.scrollY) - (window.scrollY) + canvas_div.scrollTop - absy - 1 + "px";
+                arrowParent.style.left = (arrowParent.getBoundingClientRect().left + window.scrollX) - (window.scrollX) + canvas_div.scrollLeft - absx - 1 + "px";
+                arrowParent.style.top = (arrowParent.getBoundingClientRect().top + window.scrollY) + canvas_div.scrollTop - 1 - absy + "px";
+                canvas_div.appendChild(blockParent);
+                canvas_div.appendChild(arrowParent);
+                ctx.blockstemp[w].x = (blockParent.getBoundingClientRect().left + window.scrollX) + (toInt(blockParent.offsetWidth) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left - 1;
+                ctx.blockstemp[w].y = (blockParent.getBoundingClientRect().top + window.scrollY) + (toInt(blockParent.offsetHeight) / 2) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top - 1;
+            }
+        }
+
+        const block_temp = ctx.blockstemp.find(a => a.id == 0)!
+
+        block_temp.x = (block.getBoundingClientRect().left + window.scrollX) + (parseInt(window.getComputedStyle(block).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left;
+        block_temp.y = (block.getBoundingClientRect().top + window.scrollY) + (parseInt(window.getComputedStyle(block).height) / 2) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top;
+        
+        this.blocks = this.blocks.concat(ctx.blockstemp);
+        ctx.blockstemp = [];
+    }
+
+    private startMovingBlock( item: HTMLElement, ctx: DragContext ) {
+        const { canvas_div } = this
+        const { position } = window.getComputedStyle(canvas_div)
+
+        if (position == "absolute" || position == "fixed") {
+
+            const { left, top } =  canvas_div.getBoundingClientRect()
+            ctx.absx = left;
+            ctx.absy = top;
+        }
+            
+        ctx.original = item
+
+        const newNode = item.cloneNode(true) as HTMLElement;
+
+        item.classList.add('dragnow');
+        newNode.classList.add('block');
+        newNode.classList.remove('create-flowy');
+
+        newNode.setAttribute( 'id', this.nexBlockId )
+        document.body.appendChild(newNode);
+        
+        ctx.element = newNode
+
+        this.blockGrabbed(item);
+
+        ctx.element.classList.add('dragging');
+
+        ctx.active = true;
+
+        const { left , top } = item.getBoundingClientRect()
+
+        ctx.dragx = ctx.mouse_x - left
+        ctx.dragy = ctx.mouse_y - top
+
+        ctx.element.style.left = ctx.mouse_x - ctx.dragx + 'px'
+        ctx.element.style.top = ctx.mouse_y - ctx.dragy + 'px'
+
+    }
+
+   private endMovingBlock( ctx: DragContext )  {
+        
+        const { canvas_div } = this
+        const { element: drag, original } = ctx
+
+        if( !drag ) return // GUARD
+        if( !original ) return // GUARD
+
+        // GUARD
+        if( !(ctx.active || ctx.rearrange) ) return
+    
+        ctx.dragblock = false;
+
+        this.blockReleased( original );
+        
+        if (!this._indicator.classList.contains("invisible")) {
+            this._indicator.classList.add("invisible");
+        }
+        
+        // ACTIVE STRATEGY
+        if (ctx.active) {
+            
+            original.classList.remove("dragnow");
+            drag.classList.remove("dragging");
+
+            if(this.blocks.length === 0) {
+
+                const { top:drag_top, left:drag_left } = drag.getBoundingClientRect()
+                const { top:canvas_top, left:canvas_left } = canvas_div.getBoundingClientRect()
+
+                if ((drag_top + window.scrollY) > (canvas_top + window.scrollY) && (drag_left + window.scrollX) > (canvas_left + window.scrollX)) {
+                    this.dropFirstBlock( ctx )
+                }
+                else {
+                    this.removeSelection( ctx ) 
+                }
+                return
+            }
+
+            const block_index = this.blocks.findIndex( b => this.checkAttach( drag, b.id ) )
+            if( block_index != -1 ) {
+                ctx.active = false
+
+                const blocka = this.blocks[block_index]
+
+                if (this.blockSnap(drag, false, this.#blockByValue( blocka.id))) {
+                    const blocko = this.blocks.map(a => a.id)
+                    this.snap(ctx, block_index, blocko)
+                } else {
+                    ctx.active = false
+                    this.removeSelection( ctx ) 
+                }
+            }
+            else {
+                ctx.active = false
+                this.removeSelection( ctx ) 
+            }
+
+        }
+        
+        // REARRANGE STRATEGY
+        if ( ctx.rearrange  ) {
+
+            if( blockIdNumber( drag ) === 0 ) {
+                this.rearrangeFirstBlock( ctx )
+                return
+            }
+
+            const rejectDrop = () => {
+                const ii = blocko.indexOf(ctx.prevblock)
+                this.snap( ctx, ii, blocko);
+            }
+
+            const blocko = this.blocks.map(a => a.id);
+
+            for (let i = 0; i < this.blocks.length; i++) {
+                if ( this.checkAttach( drag, blocko[i])) {
+                    ctx.active = false;
+
+                    const b = this.blocks.find(id => id.id == blocko[i])! 
+                    console.assert( b!==undefined, `block ${blocko[i]} not found!` )
+
+                    if (this.blockMove(drag, b) ) {
+                         this.snap(ctx, i, blocko);
+                    }
+                    else {
+                        rejectDrop()
+                    }
+                    break;
+                } 
+                else if (i == this.blocks.length - 1) {
+            
+                    if( this.deleteUnlinkBlockOnDrag ) {
+                        ctx.rearrange = false;
+                        ctx.blockstemp = [];
+                        ctx.active = false;
+                        this.removeSelection( ctx ) 
+                        break;
+                    }
+                    else {
+                    
+                        ctx.active = false;
+                        rejectDrop()
+                        break;
+                    }
+                    
+                }
+            }
+        } 
+                        
+    }
+
+    private moveBlock( ctx : DragContext ) {
+
+        const { element: drag } = ctx
         if( !drag ) return // GUARD
 
         const { canvas_div } = this
@@ -836,10 +1034,6 @@ export class FlowyDiagram extends LitElement {
         absy:0,
     }
 
-    private beginDrag!: (event: any) => void
-    private endDrag!: (event: any) => void
-    private touchblock!: (event: any) => void
-
     private checkAttach( block: HTMLElement, id: number) { 
 
         const { canvas_div, spacing_x:paddingx, spacing_y:paddingy } = this
@@ -940,16 +1134,8 @@ export class FlowyDiagram extends LitElement {
             el.classList.add('invisible');
             canvas_div.appendChild(el);
 
-            this.beginDrag = (event:UIEvent) => {
 
-                const { position } = window.getComputedStyle(canvas_div)
-
-                if (position == "absolute" || position == "fixed") {
-
-                    const { left, top } =  canvas_div.getBoundingClientRect()
-                    this.dragCtx.absx = left;
-                    this.dragCtx.absy = top;
-                }
+            const beginDragHandler = (event:UIEvent) => {
 
                 if ('targetTouches' in event && event.targetTouches) {
 
@@ -969,193 +1155,17 @@ export class FlowyDiagram extends LitElement {
                 const item = target.closest(".create-flowy") as HTMLElement
 
                 if ( item && !isRightClick(event) ) {
-                    
-                    this.dragCtx.original = item
 
-                    let newNode = item.cloneNode(true) as HTMLElement;
-
-                    item.classList.add("dragnow");
-                    newNode.classList.add("block");
-                    newNode.classList.remove("create-flowy");
-
-                    newNode.setAttribute( 'id', this.nexBlockId )
-                    document.body.appendChild(newNode);
-                    
-                    this.dragCtx.element = newNode
-
-                    this.blockGrabbed(item);
-
-                    this.dragCtx.element.classList.add("dragging");
-
-                    this.dragCtx.active = true;
-
-                    const { left , top } = item.getBoundingClientRect()
-
-                    this.dragCtx.dragx = this.dragCtx.mouse_x - left
-                    this.dragCtx.dragy = this.dragCtx.mouse_y - top
-
-                    this.dragCtx.element.style.left = this.dragCtx.mouse_x - this.dragCtx.dragx + "px";
-                    this.dragCtx.element.style.top = this.dragCtx.mouse_y - this.dragCtx.dragy + "px";
+                    this.startMovingBlock( item, this.dragCtx )
                 }
             }
 
-            this.endDrag = (event:UIEvent) => {
-                const { element: drag, original } = this.dragCtx
+            const endDragHandler = (event:UIEvent) => {
+                if( isRightClick(event) ) return // GUARD
 
-                if( !drag ) return // GUARD
-                if( !original ) return // GUARD
+                this.endMovingBlock( this.dragCtx )
 
-                // GUARD
-                if( isRightClick(event) ) return
-                if( !(this.dragCtx.active || this.dragCtx.rearrange) ) return
-            
-                this.dragCtx.dragblock = false;
-
-                this.blockReleased( original );
-                
-                if (!this._indicator.classList.contains("invisible")) {
-                    this._indicator.classList.add("invisible");
-                }
-                
-                // ACTIVE STRATEGY
-                if (this.dragCtx.active) {
-                    
-                    original.classList.remove("dragnow");
-                    drag.classList.remove("dragging");
-
-                    if(this.blocks.length === 0) {
-
-                        const { top:drag_top, left:drag_left } = drag.getBoundingClientRect()
-                        const { top:canvas_top, left:canvas_left } = canvas_div.getBoundingClientRect()
-
-                        if ((drag_top + window.scrollY) > (canvas_top + window.scrollY) && (drag_left + window.scrollX) > (canvas_left + window.scrollX)) {
-                            dropFirstBlock( this.dragCtx )
-                        }
-                        else {
-                            this.removeSelection( this.dragCtx ) 
-                        }
-                        return
-                    }
-
-                    const block_index = this.blocks.findIndex( b => this.checkAttach( drag, b.id ) )
-                    if( block_index != -1 ) {
-                        this.dragCtx.active = false
-
-                        const blocka = this.blocks[block_index]
-
-                        if (this.blockSnap(drag, false, this.#blockByValue( blocka.id))) {
-                            const blocko = this.blocks.map(a => a.id)
-                            this.snap(this.dragCtx, block_index, blocko)
-                        } else {
-                            this.dragCtx.active = false
-                            this.removeSelection( this.dragCtx ) 
-                        }
-                    }
-                    else {
-                        this.dragCtx.active = false
-                        this.removeSelection( this.dragCtx ) 
-                    }
-
-                }
-                
-                // REARRANGE STRATEGY
-                if ( this.dragCtx.rearrange  ) {
-
-                    if( blockIdNumber( drag ) === 0 ) {
-                        rearrangeFirstBlock( this.dragCtx )
-                        return
-                    }
-
-                    const rejectDrop = () => {
-                        const ii = blocko.indexOf(this.dragCtx.prevblock)
-                        this.snap( this.dragCtx, ii, blocko);
-                    }
-
-                    const blocko = this.blocks.map(a => a.id);
-
-                    for (let i = 0; i < this.blocks.length; i++) {
-                        if ( this.checkAttach( drag, blocko[i])) {
-                            this.dragCtx.active = false;
-
-                            const b = this.blocks.find(id => id.id == blocko[i])! 
-                            console.assert( b!==undefined, `block ${blocko[i]} not found!` )
-
-                            if (this.blockMove(drag, b) ) {
-                                 this.snap(this.dragCtx, i, blocko);
-                            }
-                            else {
-                                rejectDrop()
-                            }
-                            break;
-                        } 
-                        else if (i == this.blocks.length - 1) {
-                    
-                            if( this.deleteUnlinkBlockOnDrag ) {
-                                this.dragCtx.rearrange = false;
-                                this.dragCtx.blockstemp = [];
-                                this.dragCtx.active = false;
-                                this.removeSelection( this.dragCtx ) 
-                                break;
-                            }
-                            else {
-                            
-                                this.dragCtx.active = false;
-                                rejectDrop()
-                                break;
-                            }
-                            
-                        }
-                    }
-                } 
-                                
             }
-
-            const dropFirstBlock = ( ctx: Pick<DragContext, 'element' | 'absy' | 'absx' | 'active' | 'rearrange'>) => {
-
-                const { element: block, absy, absx } = ctx
-                if( !block ) return // GUARD
-
-                this.blockSnap(block, true, undefined)
-
-                ctx.active = false;
-                
-                block.style.top = (block.getBoundingClientRect().top + window.scrollY) - (absy + window.scrollY) + canvas_div.scrollTop + "px";
-                block.style.left = (block.getBoundingClientRect().left + window.scrollX) - (absx + window.scrollX) + canvas_div.scrollLeft + "px";
-                
-                this.addBlockElement( ctx )
-
-                this.addDataBlockFromElement( block )
-            }
-
-            const rearrangeFirstBlock = ( ctx: Pick<DragContext, 'element' | 'blockstemp' |'absx' | 'absy'>) => {
-
-                const { element: block, absx, absy  } = ctx
-                if( !block ) return // GUARD
-
-                for (let w = 0; w < ctx.blockstemp.length; w++) {
-                    if (ctx.blockstemp[w].id != blockIdNumber( block )) {
-                        const blockParent = this.#blockByValue(ctx.blockstemp[w].id)
-                        const arrowParent = this.#arrowByValue(ctx.blockstemp[w].id)
-                        blockParent.style.left = (blockParent.getBoundingClientRect().left + window.scrollX) - (window.scrollX) + canvas_div.scrollLeft - 1 - absx + "px";
-                        blockParent.style.top = (blockParent.getBoundingClientRect().top + window.scrollY) - (window.scrollY) + canvas_div.scrollTop - absy - 1 + "px";
-                        arrowParent.style.left = (arrowParent.getBoundingClientRect().left + window.scrollX) - (window.scrollX) + canvas_div.scrollLeft - absx - 1 + "px";
-                        arrowParent.style.top = (arrowParent.getBoundingClientRect().top + window.scrollY) + canvas_div.scrollTop - 1 - absy + "px";
-                        canvas_div.appendChild(blockParent);
-                        canvas_div.appendChild(arrowParent);
-                        ctx.blockstemp[w].x = (blockParent.getBoundingClientRect().left + window.scrollX) + (toInt(blockParent.offsetWidth) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left - 1;
-                        ctx.blockstemp[w].y = (blockParent.getBoundingClientRect().top + window.scrollY) + (toInt(blockParent.offsetHeight) / 2) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top - 1;
-                    }
-                }
-
-                const block_temp = ctx.blockstemp.find(a => a.id == 0)!
-
-                block_temp.x = (block.getBoundingClientRect().left + window.scrollX) + (parseInt(window.getComputedStyle(block).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left;
-                block_temp.y = (block.getBoundingClientRect().top + window.scrollY) + (parseInt(window.getComputedStyle(block).height) / 2) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top;
-                
-                this.blocks = this.blocks.concat(ctx.blockstemp);
-                ctx.blockstemp = [];
-            }
-
 
             const touchBlockHandler = (event: UIEvent) => {
 
@@ -1218,17 +1228,17 @@ export class FlowyDiagram extends LitElement {
             }
 
 
-            document.addEventListener("mousedown", this.beginDrag);
-            document.addEventListener("mousedown", this.touchblock, false);
-            document.addEventListener("touchstart", this.beginDrag);
+            document.addEventListener("mousedown", beginDragHandler);
+            document.addEventListener("touchstart", beginDragHandler);
+
             document.addEventListener("touchstart", touchBlockHandler, false);
+            document.addEventListener("mouseup",    touchBlockHandler, false);
+            document.addEventListener("mousedown",  touchBlockHandler, false);
+            document.addEventListener("mousemove",  moveBlockHandler, false);
+            document.addEventListener("touchmove",  moveBlockHandler, false);
 
-            document.addEventListener("mouseup", touchBlockHandler, false);
-            document.addEventListener("mousemove", moveBlockHandler, false);
-            document.addEventListener("touchmove", moveBlockHandler, false);
-
-            document.addEventListener("mouseup", this.endDrag, false);
-            document.addEventListener("touchend", this.endDrag, false);
+            document.addEventListener("mouseup", endDragHandler, false);
+            document.addEventListener("touchend", endDragHandler, false);
         }
 
         this.load();
