@@ -174,7 +174,7 @@ export class FlowyDiagram extends LitElement {
     // `
 
     @query('#canvas')
-    private _canvas!: HTMLCanvasElement;
+    private canvas_div!: HTMLCanvasElement;
 
     @query('.indicator')
     private _indicator!: HTMLElement;
@@ -195,7 +195,7 @@ export class FlowyDiagram extends LitElement {
      */
     output(): Output {
 
-        const html_ser = this._canvas.innerHTML;
+        const html_ser = this.canvas_div.innerHTML;
         const json_data: Output = {
             html: html_ser,
             blockarr: this.blocks,
@@ -231,19 +231,19 @@ export class FlowyDiagram extends LitElement {
     
     import( output:Output ) {
 
-        this._canvas.innerHTML = output.html;
+        this.canvas_div.innerHTML = output.html;
         for (let a = 0; a < output.blockarr.length; a++) {
             this.addDataBlock( output.blockarr[a] )
         }
         if (this.blocks.length > 1) {
-            this.rearrangeMe();
-            this.checkOffset();
+            this.rearrangeMe( { absx: 0 } )
+            this.checkOffset( { absx: 0 } )
         }
     }
 
-    private checkOffset():void {
-        const { left:canvas_left } = this._canvas.getBoundingClientRect()
-        const { absx } = this.dragContext
+    private checkOffset( ctx: Pick<DragContext, 'absx'> ):void {
+        const { left:canvas_left } = this.canvas_div.getBoundingClientRect()
+        const { absx } = ctx
 
         const offsetleftArr = this.blocks.map(a => a.x);
         const widths = this.blocks.map(a => a.width);
@@ -273,7 +273,7 @@ export class FlowyDiagram extends LitElement {
             
             this.blocks.forEach( b => 
                 b.x = (this.#blockByValue(b.id).getBoundingClientRect().left + window.scrollX) + 
-                        (this._canvas.scrollLeft) + 
+                        (this.canvas_div.scrollLeft) + 
                         (parseInt(window.getComputedStyle(this.#blockByValue(b.id)).width) / 2) - 20 - canvas_left
             )
         }
@@ -282,9 +282,9 @@ export class FlowyDiagram extends LitElement {
     /**
      * 
      */
-    private rearrangeMe():void {
-        const { _canvas: canvas_div, spacing_x:paddingx, spacing_y:paddingy } = this
-        const { absx } = this.dragContext
+    private rearrangeMe( ctx: Pick<DragContext, 'absx'> ):void {
+        const { canvas_div, spacing_x:paddingx, spacing_y:paddingy } = this
+        const { absx } = ctx
 
         let result = this.blocks.map(a => a.parent);
         for (let z = 0; z < result.length; z++) {
@@ -343,7 +343,7 @@ export class FlowyDiagram extends LitElement {
                 let arrowblock = this.blocks.find(a => a.id == children.id)!
                 let arrowx = arrowblock.x - this.blocks.find(a => a.id == children.parent)!.x + 20
                 let arrowy = paddingy
-                this.updateArrow(arrowblock, arrowx, arrowy, children)
+                this.updateArrow( ctx, arrowblock, arrowx, arrowy, children)
             }
         }
     }
@@ -357,8 +357,8 @@ export class FlowyDiagram extends LitElement {
     addDataBlockFromElement( block: HTMLElement, data?: Partial<Block>   ) {
         const { width: block_width, height: block_height } = window.getComputedStyle(block)
         const { left: block_left, top: block_top } = block.getBoundingClientRect()
-        const { left, top } = this._canvas.getBoundingClientRect()
-        const { scrollLeft, scrollTop } = this._canvas
+        const { left, top } = this.canvas_div.getBoundingClientRect()
+        const { scrollLeft, scrollTop } = this.canvas_div
         const { scrollX, scrollY } = window
 
         const b = {
@@ -448,7 +448,7 @@ export class FlowyDiagram extends LitElement {
     */
     deleteBlocks() {
         this.blocks = [];
-        this._canvas.innerHTML = "<div class='indicator invisible'></div>";
+        this.canvas_div.innerHTML = "<div class='indicator invisible'></div>";
     }
 
     private blockGrabbed(block: HTMLElement) {
@@ -504,17 +504,20 @@ export class FlowyDiagram extends LitElement {
      * @param y 
      * @param parent 
      */
-    private drawArrow( el:HTMLElement, arrow: Block, x: number, y: number, parent: number):void {
-        const { absx } = this.dragContext
+    private drawArrow( ctx: Pick<DragContext, 'element' | 'absx' | 'absy' >, arrow: Block, x: number, y: number, parent: number):void {
+        const { element, absy, absx } = ctx
+
+        if( !element ) return // GUARD
+
         const parent_id = `block${parent}`
         
         // TODO MOVE SETTING OF DRAG PARENT OUT OF THIS METHOD
-        el.setAttribute( 'parent', parent_id )
+        element.setAttribute( 'parent', parent_id )
 
-        const { _canvas: canvas_div, spacing_y:paddingy } = this;
+        const { canvas_div, spacing_y:paddingy } = this;
 
         const parent_block = this.blocks.find(a => a.id == parent)!
-        const drag_id = blockIdNumber(el)
+        const drag_id = blockIdNumber(element)
 
         const adjustment = (absx + window.scrollX) - canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left
        
@@ -538,7 +541,7 @@ export class FlowyDiagram extends LitElement {
 
         }
 
-        arrow_element.style.top = `${parent_block.y + (parent_block.height / 2) + canvas_div.getBoundingClientRect().top - this.dragContext.absy}px`
+        arrow_element.style.top = `${parent_block.y + (parent_block.height / 2) + canvas_div.getBoundingClientRect().top - absy}px`
     }
 
     /**
@@ -548,14 +551,14 @@ export class FlowyDiagram extends LitElement {
      * @param y 
      * @param children 
      */
-    private updateArrow(arrow: Block, x: number, y: number, children: Block):void {
+    private updateArrow( ctx: Pick<DragContext, 'absx' >, arrow: Block, x: number, y: number, children: Block):void {
 
-        const { _canvas: canvas_div, spacing_y:paddingy } = this
+        const { canvas_div, spacing_y:paddingy } = this
 
         const _source_block = this.blocks.find(a => a.id == children.parent)!
         const el = this.#arrowByValue(children.id)
 
-        const adjustment = (this.dragContext.absx + window.scrollX) - canvas_div.getBoundingClientRect().left
+        const adjustment = (ctx.absx + window.scrollX) - canvas_div.getBoundingClientRect().left
 
         if (x < 0) {
 
@@ -576,7 +579,7 @@ export class FlowyDiagram extends LitElement {
     //
     //////////////////////////////////////////////////////
 
-    private dragContext:DragContext = {
+    private dragCtx:DragContext = {
         element: null, // currently dragegd element
         original: null,
         rearrange: false,
@@ -599,7 +602,7 @@ export class FlowyDiagram extends LitElement {
 
     private checkAttach( block: HTMLElement, id: number) { 
 
-        const { _canvas: canvas_div, spacing_x:paddingx, spacing_y:paddingy } = this;
+        const { canvas_div, spacing_x:paddingx, spacing_y:paddingy } = this;
 
         const b = this.blocks.find( a => a.id == id  )!
         console.assert( b!==undefined, `blocks[${id}] not found!`)
@@ -621,9 +624,9 @@ export class FlowyDiagram extends LitElement {
 
         if( !drag ) throw 'drag element not valid!'
 
-        this._canvas.appendChild(drag)
+        this.canvas_div.appendChild(drag)
 
-        drag.addEventListener("click", (e) => {
+        drag.addEventListener('click', (e) => {
 
             // guard 
             const skip = ( ctx.rearrange /* && drag.classList.contains('dragging')*/ )
@@ -646,7 +649,7 @@ export class FlowyDiagram extends LitElement {
 
         if( !ctx.element ) return // GUARD
 
-        this._canvas.appendChild(this._indicator)
+        this.canvas_div.appendChild(this._indicator)
 
         ctx.element.parentNode?.removeChild(ctx.element)
     }
@@ -684,11 +687,11 @@ export class FlowyDiagram extends LitElement {
 
             loaded = true;
 
-            const { _canvas: canvas_div, spacing_x:paddingx, spacing_y:paddingy } = this;
+            const { canvas_div, spacing_x:paddingx, spacing_y:paddingy } = this;
             
             if (window.getComputedStyle(canvas_div).position == "absolute" || window.getComputedStyle(canvas_div).position == "fixed") {
-                this.dragContext.absx = canvas_div.getBoundingClientRect().left;
-                this.dragContext.absy = canvas_div.getBoundingClientRect().top;
+                this.dragCtx.absx = canvas_div.getBoundingClientRect().left;
+                this.dragCtx.absy = canvas_div.getBoundingClientRect().top;
             }
 
             // indicator
@@ -704,21 +707,21 @@ export class FlowyDiagram extends LitElement {
                 if (position == "absolute" || position == "fixed") {
 
                     const { left, top } =  canvas_div.getBoundingClientRect()
-                    this.dragContext.absx = left;
-                    this.dragContext.absy = top;
+                    this.dragCtx.absx = left;
+                    this.dragCtx.absy = top;
                 }
 
                 if ('targetTouches' in event && event.targetTouches) {
 
                     const { clientX, clientY } = (<TouchEvent>event).changedTouches[0]
-                    this.dragContext.mouse_x = clientX
-                    this.dragContext.mouse_y = clientY
+                    this.dragCtx.mouse_x = clientX
+                    this.dragCtx.mouse_y = clientY
                 
                 } else {
 
                     const { clientX, clientY } = event as MouseEvent
-                    this.dragContext.mouse_x = clientX
-                    this.dragContext.mouse_y = clientY
+                    this.dragCtx.mouse_x = clientX
+                    this.dragCtx.mouse_y = clientY
                 }
 
                 const target = event.target as HTMLElement 
@@ -727,7 +730,7 @@ export class FlowyDiagram extends LitElement {
 
                 if ( item && !isRightClick(event) ) {
                     
-                    this.dragContext.original = item
+                    this.dragCtx.original = item
 
                     let newNode = item.cloneNode(true) as HTMLElement;
 
@@ -738,47 +741,47 @@ export class FlowyDiagram extends LitElement {
                     newNode.setAttribute( 'id', this.nexBlockId )
                     document.body.appendChild(newNode);
                     
-                    this.dragContext.element = newNode
+                    this.dragCtx.element = newNode
 
                     this.blockGrabbed(item);
 
-                    this.dragContext.element.classList.add("dragging");
+                    this.dragCtx.element.classList.add("dragging");
 
-                    this.dragContext.active = true;
+                    this.dragCtx.active = true;
 
                     const { left , top } = item.getBoundingClientRect()
 
-                    this.dragContext.dragx = this.dragContext.mouse_x - left
-                    this.dragContext.dragy = this.dragContext.mouse_y - top
+                    this.dragCtx.dragx = this.dragCtx.mouse_x - left
+                    this.dragCtx.dragy = this.dragCtx.mouse_y - top
 
-                    this.dragContext.element.style.left = this.dragContext.mouse_x - this.dragContext.dragx + "px";
-                    this.dragContext.element.style.top = this.dragContext.mouse_y - this.dragContext.dragy + "px";
+                    this.dragCtx.element.style.left = this.dragCtx.mouse_x - this.dragCtx.dragx + "px";
+                    this.dragCtx.element.style.top = this.dragCtx.mouse_y - this.dragCtx.dragy + "px";
                 }
             }
 
             this.moveBlock = (event:UIEvent) => {
 
-                const { element: drag } = this.dragContext
+                const { element: drag } = this.dragCtx
 
                 if( !drag ) return // GUARD
 
                 if ('targetTouches' in event && event.targetTouches) {
 
                     const { clientX, clientY } = (<TouchEvent>event).changedTouches[0]
-                    this.dragContext.mouse_x = clientX
-                    this.dragContext.mouse_y = clientY
+                    this.dragCtx.mouse_x = clientX
+                    this.dragCtx.mouse_y = clientY
 
                 } else {
 
                     const { clientX, clientY } = event as MouseEvent
-                    this.dragContext.mouse_x = clientX
-                    this.dragContext.mouse_y = clientY
+                    this.dragCtx.mouse_x = clientX
+                    this.dragCtx.mouse_y = clientY
 
                 }
 
-                if (this.dragContext.dragblock) {
+                if (this.dragCtx.dragblock) {
 
-                    this.dragContext.rearrange = true;
+                    this.dragCtx.rearrange = true;
                     drag.classList.add("dragging");
                     
                     const blockid = blockIdNumber( drag );
@@ -786,9 +789,9 @@ export class FlowyDiagram extends LitElement {
                     const prev_block = this.blocks.find(a => a.id == blockid)!
                     console.assert( prev_block!==undefined, "prev block not found!" )
 
-                    this.dragContext.prevblock = prev_block.parent;
+                    this.dragCtx.prevblock = prev_block.parent;
                     
-                    this.dragContext.blockstemp.push(prev_block);
+                    this.dragCtx.blockstemp.push(prev_block);
                     
                     this.blocks = this.blocks.filter(e => e.id != blockid)
 
@@ -809,7 +812,7 @@ export class FlowyDiagram extends LitElement {
                             const block = this.blocks.find(a => a.id == lid )!
                             console.assert( block!==undefined, `block[${lid}] not found!` )
 
-                            this.dragContext.blockstemp.push( block );
+                            this.dragCtx.blockstemp.push( block );
                             const blockParent = this.#blockByValue(lid)
                             const arrowParent = this.#arrowByValue(lid)
                             
@@ -847,38 +850,38 @@ export class FlowyDiagram extends LitElement {
                     }
 
                     if (this.blocks.length > 1) {
-                        this.rearrangeMe();
+                        this.rearrangeMe( this.dragCtx );
                     }
 
-                    this.dragContext.dragblock = false;
+                    this.dragCtx.dragblock = false;
                 }
 
 
-                if (this.dragContext.active) {
+                if (this.dragCtx.active) {
                     
-                    drag.style.left = this.dragContext.mouse_x - this.dragContext.dragx + "px";
-                    drag.style.top = this.dragContext.mouse_y - this.dragContext.dragy + "px";
+                    drag.style.left = this.dragCtx.mouse_x - this.dragCtx.dragx + "px";
+                    drag.style.top = this.dragCtx.mouse_y - this.dragCtx.dragy + "px";
 
-                } else if (this.dragContext.rearrange) {
+                } else if (this.dragCtx.rearrange) {
                     
-                    drag.style.left = this.dragContext.mouse_x - this.dragContext.dragx - (window.scrollX + this.dragContext.absx) + canvas_div.scrollLeft + "px";
-                    drag.style.top = this.dragContext.mouse_y - this.dragContext.dragy - (window.scrollY + this.dragContext.absy) + canvas_div.scrollTop + "px";
-                    const b = this.dragContext.blockstemp.find(a => a.id == blockIdNumber( drag ))!
+                    drag.style.left = this.dragCtx.mouse_x - this.dragCtx.dragx - (window.scrollX + this.dragCtx.absx) + canvas_div.scrollLeft + "px";
+                    drag.style.top = this.dragCtx.mouse_y - this.dragCtx.dragy - (window.scrollY + this.dragCtx.absy) + canvas_div.scrollTop + "px";
+                    const b = this.dragCtx.blockstemp.find(a => a.id == blockIdNumber( drag ))!
                     b.x = (drag.getBoundingClientRect().left + window.scrollX) + (parseInt(window.getComputedStyle(drag).width) / 2) + canvas_div.scrollLeft;
                     b.y = (drag.getBoundingClientRect().top + window.scrollY) + (parseInt(window.getComputedStyle(drag).height) / 2) + canvas_div.scrollTop;
                 }
 
-                if (this.dragContext.active || this.dragContext.rearrange) {
+                if (this.dragCtx.active || this.dragCtx.rearrange) {
                     
                     const _rect = canvas_div.getBoundingClientRect()
 
-                    if (this.dragContext.mouse_x > _rect.width + _rect.left - 10 && this.dragContext.mouse_x < _rect.width + _rect.left + 10) {
+                    if (this.dragCtx.mouse_x > _rect.width + _rect.left - 10 && this.dragCtx.mouse_x < _rect.width + _rect.left + 10) {
                         canvas_div.scrollLeft += 10;
-                    } else if (this.dragContext.mouse_x < _rect.left + 10 && this.dragContext.mouse_x > _rect.left - 10) {
+                    } else if (this.dragCtx.mouse_x < _rect.left + 10 && this.dragCtx.mouse_x > _rect.left - 10) {
                         canvas_div.scrollLeft -= 10;
-                    } else if (this.dragContext.mouse_y > _rect.height + _rect.top - 10 && this.dragContext.mouse_y < _rect.height + _rect.top + 10) {
+                    } else if (this.dragCtx.mouse_y > _rect.height + _rect.top - 10 && this.dragCtx.mouse_y < _rect.height + _rect.top + 10) {
                         canvas_div.scrollTop += 10;
-                    } else if (this.dragContext.mouse_y < _rect.top + 10 && this.dragContext.mouse_y > _rect.top - 10) {
+                    } else if (this.dragCtx.mouse_y < _rect.top + 10 && this.dragCtx.mouse_y > _rect.top - 10) {
                         canvas_div.scrollLeft -= 10;
                     }
                     
@@ -901,16 +904,16 @@ export class FlowyDiagram extends LitElement {
             }
 
             this.endDrag = (event:UIEvent) => {
-                const { element: drag, original } = this.dragContext
+                const { element: drag, original } = this.dragCtx
 
                 if( !drag ) return // GUARD
                 if( !original ) return // GUARD
 
                 // GUARD
                 if( isRightClick(event) ) return
-                if( !(this.dragContext.active || this.dragContext.rearrange) ) return
+                if( !(this.dragCtx.active || this.dragCtx.rearrange) ) return
             
-                this.dragContext.dragblock = false;
+                this.dragCtx.dragblock = false;
 
                 this.blockReleased( original );
                 
@@ -919,7 +922,7 @@ export class FlowyDiagram extends LitElement {
                 }
                 
                 // ACTIVE STRATEGY
-                if (this.dragContext.active) {
+                if (this.dragCtx.active) {
                     
                     original.classList.remove("dragnow");
                     drag.classList.remove("dragging");
@@ -930,59 +933,59 @@ export class FlowyDiagram extends LitElement {
                         const { top:canvas_top, left:canvas_left } = canvas_div.getBoundingClientRect()
 
                         if ((drag_top + window.scrollY) > (canvas_top + window.scrollY) && (drag_left + window.scrollX) > (canvas_left + window.scrollX)) {
-                            dropFirstBlock( this.dragContext )
+                            dropFirstBlock( this.dragCtx )
                         }
                         else {
-                            this.removeSelection( this.dragContext ) 
+                            this.removeSelection( this.dragCtx ) 
                         }
                         return
                     }
 
                     const block_index = this.blocks.findIndex( b => this.checkAttach( drag, b.id ) )
                     if( block_index != -1 ) {
-                        this.dragContext.active = false
+                        this.dragCtx.active = false
 
                         const blocka = this.blocks[block_index]
 
                         if (this.blockSnap(drag, false, this.#blockByValue( blocka.id))) {
                             const blocko = this.blocks.map(a => a.id)
-                            this.snap(this.dragContext, block_index, blocko)
+                            this.snap(this.dragCtx, block_index, blocko)
                         } else {
-                            this.dragContext.active = false
-                            this.removeSelection( this.dragContext ) 
+                            this.dragCtx.active = false
+                            this.removeSelection( this.dragCtx ) 
                         }
                     }
                     else {
-                        this.dragContext.active = false
-                        this.removeSelection( this.dragContext ) 
+                        this.dragCtx.active = false
+                        this.removeSelection( this.dragCtx ) 
                     }
 
                 }
                 
                 // REARRANGE STRATEGY
-                if ( this.dragContext.rearrange  ) {
+                if ( this.dragCtx.rearrange  ) {
 
                     if( blockIdNumber( drag ) === 0 ) {
-                        rearrangeFirstBlock( this.dragContext )
+                        rearrangeFirstBlock( this.dragCtx )
                         return
                     }
 
                     const rejectDrop = () => {
-                        const ii = blocko.indexOf(this.dragContext.prevblock)
-                        this.snap( this.dragContext, ii, blocko);
+                        const ii = blocko.indexOf(this.dragCtx.prevblock)
+                        this.snap( this.dragCtx, ii, blocko);
                     }
 
                     const blocko = this.blocks.map(a => a.id);
 
                     for (let i = 0; i < this.blocks.length; i++) {
                         if ( this.checkAttach( drag, blocko[i])) {
-                            this.dragContext.active = false;
+                            this.dragCtx.active = false;
 
                             const b = this.blocks.find(id => id.id == blocko[i])! 
                             console.assert( b!==undefined, `block ${blocko[i]} not found!` )
 
                             if (this.blockMove(drag, b) ) {
-                                 this.snap(this.dragContext, i, blocko);
+                                 this.snap(this.dragCtx, i, blocko);
                             }
                             else {
                                 rejectDrop()
@@ -992,15 +995,15 @@ export class FlowyDiagram extends LitElement {
                         else if (i == this.blocks.length - 1) {
                     
                             if( this.deleteUnlinkBlockOnDrag ) {
-                                this.dragContext.rearrange = false;
-                                this.dragContext.blockstemp = [];
-                                this.dragContext.active = false;
-                                this.removeSelection( this.dragContext ) 
+                                this.dragCtx.rearrange = false;
+                                this.dragCtx.blockstemp = [];
+                                this.dragCtx.active = false;
+                                this.removeSelection( this.dragCtx ) 
                                 break;
                             }
                             else {
                             
-                                this.dragContext.active = false;
+                                this.dragCtx.active = false;
                                 rejectDrop()
                                 break;
                             }
@@ -1013,7 +1016,7 @@ export class FlowyDiagram extends LitElement {
 
             const dropFirstBlock = ( ctx: Pick<DragContext, 'element' | 'absy' | 'absx' | 'active' | 'rearrange'>) => {
 
-                const { element: block, absy, absx } = this.dragContext
+                const { element: block, absy, absx } = ctx
                 if( !block ) return // GUARD
 
                 this.blockSnap(block, true, undefined)
@@ -1048,7 +1051,7 @@ export class FlowyDiagram extends LitElement {
                     }
                 }
 
-                const block_temp = this.dragContext.blockstemp.find(a => a.id == 0)!
+                const block_temp = ctx.blockstemp.find(a => a.id == 0)!
 
                 block_temp.x = (block.getBoundingClientRect().left + window.scrollX) + (parseInt(window.getComputedStyle(block).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left;
                 block_temp.y = (block.getBoundingClientRect().top + window.scrollY) + (parseInt(window.getComputedStyle(block).height) / 2) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top;
@@ -1130,7 +1133,7 @@ export class FlowyDiagram extends LitElement {
                 const arrowx = arrowblock.x - block.x + 20;
                 const arrowy = paddingy;
                 
-                this.drawArrow( drag, arrowblock, arrowx, arrowy, blocko[blockIndex]);
+                this.drawArrow( ctx, arrowblock, arrowx, arrowy, blocko[blockIndex]);
 
                 if (block.parent != -1) {
 
@@ -1162,33 +1165,33 @@ export class FlowyDiagram extends LitElement {
                     bblocks[0].childwidth = totalwidth;
                 }
 
-                this.rearrangeMe();
-                this.checkOffset();
+                this.rearrangeMe( ctx );
+                this.checkOffset( ctx );
             }
 
             this.touchblock = (event: any) => {
 
-                this.dragContext.dragblock = false;
+                this.dragCtx.dragblock = false;
 
                 if (hasParentClass(event.target, "block")) {
                     const theblock = event.target.closest(".block");
 
                     if (event.targetTouches) {
-                        this.dragContext.mouse_x = event.targetTouches[0].clientX;
-                        this.dragContext.mouse_y = event.targetTouches[0].clientY;
+                        this.dragCtx.mouse_x = event.targetTouches[0].clientX;
+                        this.dragCtx.mouse_y = event.targetTouches[0].clientY;
                     } else {
-                        this.dragContext.mouse_x = event.clientX;
-                        this.dragContext.mouse_y = event.clientY;
+                        this.dragCtx.mouse_x = event.clientX;
+                        this.dragCtx.mouse_y = event.clientY;
                     }
                     
                     if (event.type !== "mouseup" ) {
                         if (event.which != 3) {
-                            if (!this.dragContext.active && !this.dragContext.rearrange) {
-                                this.dragContext.dragblock = true;
-                                this.dragContext.element = theblock;
+                            if (!this.dragCtx.active && !this.dragCtx.rearrange) {
+                                this.dragCtx.dragblock = true;
+                                this.dragCtx.element = theblock;
                                 if( theblock ) {
-                                    this.dragContext.dragx = this.dragContext.mouse_x - (theblock.getBoundingClientRect().left + window.scrollX);
-                                    this.dragContext.dragy = this.dragContext.mouse_y - (theblock.getBoundingClientRect().top + window.scrollY);
+                                    this.dragCtx.dragx = this.dragCtx.mouse_x - (theblock.getBoundingClientRect().left + window.scrollX);
+                                    this.dragCtx.dragy = this.dragCtx.mouse_y - (theblock.getBoundingClientRect().top + window.scrollY);
                                 }
                             }
                         }
