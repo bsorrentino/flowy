@@ -855,38 +855,46 @@ export class FlowyDiagram extends LitElement {
     }
 
 
-    public addLinkedBlock( template:HTMLElement, blockToAttach:HTMLElement ) {
+    public addLinkedBlock( template:HTMLElement, blockToAttach:HTMLElement ):Promise<void> {
 
-        if(this.blocks.length === 0) { 
-            throw 'error because it is a first block on the diagram!'
-        }
-
-        let max_attempts = 10
-
-        const interval = setInterval( () => {
-            const bid = blockIdNumber(blockToAttach)
-
-            const block_index = this.blocks.findIndex( b => bid === b.id )
-            if( block_index == -1 && --max_attempts > 0) {
+        return new Promise( (resolve, reject ) => {
+            if(this.blocks.length === 0) { 
+                reject( 'error because it is a first block on the diagram!' )
                 return
             }
-            
-            clearInterval( interval )
-
-            if( max_attempts === 0 ) {
-                throw `block with id ${bid} not found!`
-            }
-
-            const ctx:DragContext = { 
-                ...this.dragCtx,
-            } 
-
-            // START DRAG BLOCK
-            this.startDragBlock( template, ctx )
     
-            // this.endDragBlock( ctx )
-            if( ctx.element ) {  // SNIPPET FROM endDragBlock()
-
+            let max_attempts = 10
+    
+            const interval = setInterval( () => {
+                const bid = blockIdNumber(blockToAttach)
+    
+                const block_index = this.blocks.findIndex( b => bid === b.id )
+                if( block_index == -1 && --max_attempts > 0) {
+                    return
+                }
+                
+                clearInterval( interval )
+    
+                if( max_attempts === 0 ) {
+                    reject( `block with id ${bid} not found!` )
+                    return
+                }
+    
+                const ctx:DragContext = { 
+                    ...this.dragCtx,
+                } 
+    
+                // START DRAG BLOCK
+                this.startDragBlock( template, ctx )
+        
+                // this.endDragBlock( ctx )
+                if( !ctx.element ) {
+                    reject( 'block not valid!')
+                    return
+                }
+                
+                // SNIPPET FROM endDragBlock()
+    
                 ctx.original?.classList.remove("dragnow");
                 ctx.element.classList.remove("dragging");
 
@@ -900,11 +908,13 @@ export class FlowyDiagram extends LitElement {
                 } else {
                     this.removeSelection( ctx ) 
                 }
-            
-            }
-
-        }, 100)
-
+                
+                resolve()
+    
+            }, 100)
+    
+    
+        })
 
     }
 

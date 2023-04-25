@@ -54,8 +54,12 @@ export const addElement = ( diagram:FlowyDiagram, target:HTMLElement, parent?:HT
             const result =  addConditionElement( diagram, target, parent )
             // diagram.debugAddLinkedBlock( conditionTestElement( '148px', '413.5px' ), target   )
             if(  result ) {
-                diagram.addLinkedBlock( conditionTestTemplate(), target )
-                diagram.addLinkedBlock( conditionTestTemplate(), target )
+
+                Promise.all([
+                    diagram.addLinkedBlock( conditionTestTemplate(), target ),
+                    diagram.addLinkedBlock( conditionTestTemplate(), target ),
+                ])
+                
             }
             return result
         case CONDITION_TEST_TYPE:  
