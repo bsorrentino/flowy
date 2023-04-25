@@ -49,10 +49,13 @@ export const addElement = ( diagram:FlowyDiagram, target:HTMLElement, parent?:HT
 
     switch( blockType(target) ) {
         case CONDITION_TYPE:
-            return addConditionElement( diagram, target, parent )
+            const result =  addConditionElement( diagram, target, parent )
             // diagram.debugAddLinkedBlock( conditionTestElement( '148px', '413.5px' ), target   )
-            // diagram.debugAddLinkedBlock( conditionTestElement( '136px', '460.5px' ), target   )
-            // return true
+            if(  result ) {
+                diagram.debugAddLinkedBlock( conditionTestTemplate(), target )
+                diagram.debugAddLinkedBlock( conditionTestTemplate(), target )
+            }
+            return result
         case CONDITION_TEST_TYPE:  
             return addConditionTestElement( diagram, target, parent )
         default:
@@ -60,7 +63,7 @@ export const addElement = ( diagram:FlowyDiagram, target:HTMLElement, parent?:HT
     }
 }
 
-const conditionTestElement = ( left: string, top: string ) =>  {
+const conditionTestTemplate = () =>  {
 
     const target = document.createElement( 'div' )
     target.classList.add( 'blockelem' )
@@ -70,22 +73,20 @@ const conditionTestElement = ( left: string, top: string ) =>  {
 
     const content = 
         html`
-        <div>
-            <div class='blockyleft'>
-                <img src=''>
-                <p class='blockyname'>TEST</p>
-            </div>
-            <div class='blockyright'>
-                <img src=''>
-            </div>
-            <div class='blockydiv'></div>
-            <div class='blockyinfo'>condition branch</div>
+        <div class="grabme">
+            <img src="${grabme_img}">
         </div>
-        `
+        <div class="blockico">
+            <span></span>
+            <img src="">
+        </div>
+        <div class="blockin">
+            <div class="blocktext">
+                <p class="blocktitle">Test</p>
+                <p class="blockdesc">This is a condition test element</p>
+            </div>
+        </div> `
     render( content, target )
-
-    target.style.left = left
-    target.style.top = top
 
     return target
 }

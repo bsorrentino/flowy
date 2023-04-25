@@ -400,7 +400,7 @@ export class FlowyDiagram extends LitElement {
 
         const { canvas_div } = this
 
-        this.blockSnap(block, true, undefined)
+        this.dispatchBlockSnapping(block, true, undefined)
 
         ctx.active = false;
         
@@ -442,7 +442,8 @@ export class FlowyDiagram extends LitElement {
         ctx.blockstemp = [];
     }
 
-    private startMovingBlock( item: HTMLElement, ctx: DragContext ) {
+    private startDragBlock( item: HTMLElement, ctx: DragContext ) {
+
         const { canvas_div } = this
         const { position } = window.getComputedStyle(canvas_div)
 
@@ -466,7 +467,7 @@ export class FlowyDiagram extends LitElement {
         
         ctx.element = newNode
 
-        this.blockGrabbed(item);
+        this.dispatchTemplateGrabbed(item);
 
         ctx.element.classList.add('dragging');
 
@@ -482,7 +483,7 @@ export class FlowyDiagram extends LitElement {
 
     }
 
-   private endMovingBlock( ctx: DragContext )  {
+   private endDragBlock( ctx: DragContext )  {
         
         const { canvas_div } = this
         const { element: drag, original } = ctx
@@ -495,7 +496,7 @@ export class FlowyDiagram extends LitElement {
     
         ctx.dragblock = false;
 
-        this.blockReleased( original );
+        this.dispatchTemplateReleased( original );
         
         if (!this._indicator.classList.contains("invisible")) {
             this._indicator.classList.add("invisible");
@@ -521,22 +522,22 @@ export class FlowyDiagram extends LitElement {
                 return
             }
 
+            ctx.active = false
+
             const block_index = this.blocks.findIndex( b => this.checkAttach( drag, b.id ) )
             if( block_index != -1 ) {
-                ctx.active = false
 
                 const blocka = this.blocks[block_index]
-
-                if (this.blockSnap(drag, false, this.#blockByValue( blocka.id))) {
+        
+                if (this.dispatchBlockSnapping(drag, false, this.#blockByValue( blocka.id))) {
                     const blocko = this.blocks.map(a => a.id)
                     this.snap(ctx, block_index, blocko)
                 } else {
-                    ctx.active = false
                     this.removeSelection( ctx ) 
                 }
+        
             }
             else {
-                ctx.active = false
                 this.removeSelection( ctx ) 
             }
 
@@ -837,35 +838,53 @@ export class FlowyDiagram extends LitElement {
     }
 
 
-    public debugAddLinkedBlock( template:HTMLElement, blockToAttach:HTMLElement ) {
+    public addLinkedBlock( template:HTMLElement, blockToAttach:HTMLElement ) {
 
         if(this.blocks.length === 0) { 
             throw 'error because it is a first block on the diagram!'
         }
 
+        let max_attempts = 10
+
         const interval = setInterval( () => {
             const bid = blockIdNumber(blockToAttach)
 
             const block_index = this.blocks.findIndex( b => bid === b.id )
-            if( block_index == -1 ) return
-    
+            if( block_index == -1 && --max_attempts > 0) {
+                return
+            }
+            
             clearInterval( interval )
-            
-            template.setAttribute( 'id', this.nexBlockId)
-            
-            const blocko = this.blocks.map(a => a.id)
 
-            const ctx = {
-                element: template,
-                rearrange : false,
-                absx: 0, absy: 0,
-                blockstemp: []
+            if( max_attempts === 0 ) {
+                throw `block with id ${bid} not found!`
             }
 
-            // const blocka = this.blocks[block_index]
-            // if (this.blockSnap(template, false, this.#blockByValue( blocka.id))) {
-                this.snap( ctx, block_index, blocko)
-            // }
+            const ctx:DragContext = { 
+                ...this.dragCtx,
+            } 
+
+            // START DRAG BLOCK
+            this.startDragBlock( template, ctx )
+    
+            // this.endDragBlock( ctx )
+            if( ctx.element ) {  // SNIPPET FROM endDragBlock()
+
+                ctx.original?.classList.remove("dragnow");
+                ctx.element.classList.remove("dragging");
+
+                ctx.active = false
+
+                const blocka = this.blocks[block_index]
+        
+                if (this.dispatchBlockSnapping(ctx.element, false, this.#blockByValue( blocka.id))) {
+                    const blocko = this.blocks.map(a => a.id)
+                    this.snap(ctx, block_index, blocko)
+                } else {
+                    this.removeSelection( ctx ) 
+                }
+            
+            }
 
         }, 100)
 
@@ -890,21 +909,21 @@ export class FlowyDiagram extends LitElement {
         this.canvas_div.innerHTML = "<div class='indicator invisible'></div>";
     }
 
-    private blockGrabbed(block: HTMLElement) {
+    private dispatchTemplateGrabbed(block: HTMLElement) {
         const event = new CustomEvent<HTMLElement>('templateGrabbed', {
             detail: block
         })
         this.dispatchEvent(event)
     }
 
-    private blockReleased( block: HTMLElement ) {
+    private dispatchTemplateReleased( block: HTMLElement ) {
         const event = new CustomEvent<HTMLElement>('templateReleased', {
             detail: block
         })
         this.dispatchEvent(event)
     }
 
-    private blockSnap(drag: HTMLElement, first: boolean, parent?: HTMLElement) {
+    private dispatchBlockSnapping(drag: HTMLElement, first: boolean, parent?: HTMLElement) {
         const event = new CustomEvent<{target: HTMLElement, parent?: HTMLElement}>('snapping', {
             detail: { target:drag, parent: parent },
             cancelable: true
@@ -1156,14 +1175,14 @@ export class FlowyDiagram extends LitElement {
 
                 if ( item && !isRightClick(event) ) {
 
-                    this.startMovingBlock( item, this.dragCtx )
+                    this.startDragBlock( item, this.dragCtx )
                 }
             }
 
             const endDragHandler = (event:UIEvent) => {
                 if( isRightClick(event) ) return // GUARD
 
-                this.endMovingBlock( this.dragCtx )
+                this.endDragBlock( this.dragCtx )
 
             }
 
