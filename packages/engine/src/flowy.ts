@@ -1139,7 +1139,10 @@ export class FlowyDiagram extends LitElement {
     }
 
     protected render() {
-        return html`<div id="canvas">`
+        return html`
+            <div id="canvas">
+                <div class="indicator invisible"></div>
+            </div>`
     }
  
     /**
@@ -1162,12 +1165,6 @@ export class FlowyDiagram extends LitElement {
                 this.dragCtx.absx = canvas_div.getBoundingClientRect().left;
                 this.dragCtx.absy = canvas_div.getBoundingClientRect().top;
             }
-
-            // indicator
-            const el = document.createElement("DIV");
-            el.classList.add('indicator');
-            el.classList.add('invisible');
-            canvas_div.appendChild(el);
 
             const beginDragHandler = (event:UIEvent) => {
 
