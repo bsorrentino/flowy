@@ -49,10 +49,10 @@ export const addElement = ( diagram:FlowyDiagram, target:HTMLElement, parent?:HT
 
     switch( blockType(target) ) {
         case CONDITION_TYPE:
-            addConditionElement( diagram, target, parent )
+            return addConditionElement( diagram, target, parent )
             // diagram.debugAddLinkedBlock( conditionTestElement( '148px', '413.5px' ), target   )
             // diagram.debugAddLinkedBlock( conditionTestElement( '136px', '460.5px' ), target   )
-            return true
+            // return true
         case CONDITION_TEST_TYPE:  
             return addConditionTestElement( diagram, target, parent )
         default:
@@ -117,10 +117,9 @@ const addConditionTestElement = ( diagram:FlowyDiagram, target:HTMLElement, pare
 
 
 const addConditionElement = (diagram:FlowyDiagram, target:HTMLElement, parent?: HTMLElement ) =>  {
-
-    if( parent && isBlockAlreadyLinked( diagram, parent.id )) { // GUARD
-        return false
-    }
+    if( !parent ) return false // GUARD
+    if( isBlockAlreadyLinked( diagram, parent.id ) ) return false // GUARD
+    if( blockType(parent) === CONDITION_TYPE ) return false // GUARD
 
     const content = 
         html`
