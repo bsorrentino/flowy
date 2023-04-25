@@ -1151,127 +1151,117 @@ export class FlowyDiagram extends LitElement {
      */
     protected firstUpdated() {
 
-        let loaded = false
-
-        this.load = () => {
-            // GUARD
-            if (loaded) return 
-
-            loaded = true;
-
-            const { canvas_div, spacing_x:paddingx, spacing_y:paddingy } = this;
-            
-            if (window.getComputedStyle(canvas_div).position == "absolute" || window.getComputedStyle(canvas_div).position == "fixed") {
-                this.dragCtx.absx = canvas_div.getBoundingClientRect().left;
-                this.dragCtx.absy = canvas_div.getBoundingClientRect().top;
-            }
-
-            const beginDragHandler = (event:UIEvent) => {
-
-                if ('targetTouches' in event && event.targetTouches) {
-
-                    const { clientX, clientY } = (<TouchEvent>event).changedTouches[0]
-                    this.dragCtx.mouse_x = clientX
-                    this.dragCtx.mouse_y = clientY
-                
-                } else {
-
-                    const { clientX, clientY } = event as MouseEvent
-                    this.dragCtx.mouse_x = clientX
-                    this.dragCtx.mouse_y = clientY
-                }
-
-                const target = event.target as HTMLElement 
-
-                const item = target.closest(".create-flowy") as HTMLElement
-
-                if ( item && !isRightClick(event) ) {
-
-                    this.startDragBlock( item, this.dragCtx )
-                }
-            }
-
-            const endDragHandler = (event:UIEvent) => {
-                if( isRightClick(event) ) return // GUARD
-
-                this.endDragBlock( this.dragCtx )
-
-            }
-
-            const touchBlockHandler = (event: UIEvent) => {
-
-                this.dragCtx.dragblock = false;
-
-                const target = event.target as HTMLElement
-
-                if (!hasParentClass(target, 'block')) return
-
-                const theblock = target.closest('.block') as HTMLElement | null 
-
-                if ('targetTouches' in event && event.targetTouches) { 
-                    const { clientX, clientY } = (<TouchEvent>event).changedTouches[0]
-                    this.dragCtx.mouse_x = clientX;
-                    this.dragCtx.mouse_y = clientY;
-                } 
-                else {
-                    const { clientX, clientY } = event as MouseEvent
-                    this.dragCtx.mouse_x = clientX;
-                    this.dragCtx.mouse_y = clientY;
-                }
-                
-                if (event.type !== 'mouseup' && 
-                    !isRightClick(event) && 
-                    !this.dragCtx.active && 
-                    !this.dragCtx.rearrange) {
-
-                        this.dragCtx.dragblock  = true;
-                        this.dragCtx.element    = theblock
-
-                        if( theblock ) {
-                            this.dragCtx.dragx = this.dragCtx.mouse_x - (theblock.getBoundingClientRect().left + window.scrollX)
-                            this.dragCtx.dragy = this.dragCtx.mouse_y - (theblock.getBoundingClientRect().top + window.scrollY)
-                        }
-                }
-            }
-
-            const moveBlockHandler = (event:UIEvent) => {
-
-                const { element: drag } = this.dragCtx
-
-                if( !drag ) return // GUARD
-
-                if ('targetTouches' in event && event.targetTouches) {
-
-                    const { clientX, clientY } = (<TouchEvent>event).changedTouches[0]
-                    this.dragCtx.mouse_x = clientX
-                    this.dragCtx.mouse_y = clientY
-
-                } else {
-
-                    const { clientX, clientY } = event as MouseEvent
-                    this.dragCtx.mouse_x = clientX
-                    this.dragCtx.mouse_y = clientY
-
-                }
-
-                this.moveBlock( this.dragCtx )
-
-            }
-
-
-            document.addEventListener("mousedown", beginDragHandler);
-            document.addEventListener("touchstart", beginDragHandler);
-
-            document.addEventListener("touchstart", touchBlockHandler, false);
-            document.addEventListener("mouseup",    touchBlockHandler, false);
-            document.addEventListener("mousedown",  touchBlockHandler, false);
-            document.addEventListener("mousemove",  moveBlockHandler, false);
-            document.addEventListener("touchmove",  moveBlockHandler, false);
-
-            document.addEventListener("mouseup", endDragHandler, false);
-            document.addEventListener("touchend", endDragHandler, false);
+        const { canvas_div, spacing_x:paddingx, spacing_y:paddingy } = this;
+        
+        if (window.getComputedStyle(canvas_div).position == "absolute" || window.getComputedStyle(canvas_div).position == "fixed") {
+            this.dragCtx.absx = canvas_div.getBoundingClientRect().left;
+            this.dragCtx.absy = canvas_div.getBoundingClientRect().top;
         }
 
-        this.load();
+        const beginDragHandler = (event:UIEvent) => {
+
+            if ('targetTouches' in event && event.targetTouches) {
+
+                const { clientX, clientY } = (<TouchEvent>event).changedTouches[0]
+                this.dragCtx.mouse_x = clientX
+                this.dragCtx.mouse_y = clientY
+            
+            } else {
+
+                const { clientX, clientY } = event as MouseEvent
+                this.dragCtx.mouse_x = clientX
+                this.dragCtx.mouse_y = clientY
+            }
+
+            const target = event.target as HTMLElement 
+
+            const item = target.closest(".create-flowy") as HTMLElement
+
+            if ( item && !isRightClick(event) ) {
+
+                this.startDragBlock( item, this.dragCtx )
+            }
+        }
+
+        const endDragHandler = (event:UIEvent) => {
+            if( isRightClick(event) ) return // GUARD
+
+            this.endDragBlock( this.dragCtx )
+
+        }
+
+        const touchBlockHandler = (event: UIEvent) => {
+
+            this.dragCtx.dragblock = false;
+
+            const target = event.target as HTMLElement
+
+            if (!hasParentClass(target, 'block')) return
+
+            const theblock = target.closest('.block') as HTMLElement | null 
+
+            if ('targetTouches' in event && event.targetTouches) { 
+                const { clientX, clientY } = (<TouchEvent>event).changedTouches[0]
+                this.dragCtx.mouse_x = clientX;
+                this.dragCtx.mouse_y = clientY;
+            } 
+            else {
+                const { clientX, clientY } = event as MouseEvent
+                this.dragCtx.mouse_x = clientX;
+                this.dragCtx.mouse_y = clientY;
+            }
+            
+            if (event.type !== 'mouseup' && 
+                !isRightClick(event) && 
+                !this.dragCtx.active && 
+                !this.dragCtx.rearrange) {
+
+                    this.dragCtx.dragblock  = true;
+                    this.dragCtx.element    = theblock
+
+                    if( theblock ) {
+                        this.dragCtx.dragx = this.dragCtx.mouse_x - (theblock.getBoundingClientRect().left + window.scrollX)
+                        this.dragCtx.dragy = this.dragCtx.mouse_y - (theblock.getBoundingClientRect().top + window.scrollY)
+                    }
+            }
+        }
+
+        const moveBlockHandler = (event:UIEvent) => {
+
+            const { element: drag } = this.dragCtx
+
+            if( !drag ) return // GUARD
+
+            if ('targetTouches' in event && event.targetTouches) {
+
+                const { clientX, clientY } = (<TouchEvent>event).changedTouches[0]
+                this.dragCtx.mouse_x = clientX
+                this.dragCtx.mouse_y = clientY
+
+            } else {
+
+                const { clientX, clientY } = event as MouseEvent
+                this.dragCtx.mouse_x = clientX
+                this.dragCtx.mouse_y = clientY
+
+            }
+
+            this.moveBlock( this.dragCtx )
+
+        }
+
+
+        document.addEventListener("mousedown", beginDragHandler);
+        document.addEventListener("touchstart", beginDragHandler);
+
+        document.addEventListener("touchstart", touchBlockHandler, false);
+        document.addEventListener("mouseup",    touchBlockHandler, false);
+        document.addEventListener("mousedown",  touchBlockHandler, false);
+        document.addEventListener("mousemove",  moveBlockHandler, false);
+        document.addEventListener("touchmove",  moveBlockHandler, false);
+
+        document.addEventListener("mouseup", endDragHandler, false);
+        document.addEventListener("touchend", endDragHandler, false);
     }
+
 }
