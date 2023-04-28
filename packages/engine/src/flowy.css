@@ -2,11 +2,6 @@
     z-index: 111 !important
 }
 
-.block {
-    position: absolute;
-    z-index: 9
-}
-
 .indicator {
     width: 12px;
     height: 12px;
