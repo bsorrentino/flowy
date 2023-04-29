@@ -393,6 +393,33 @@ export class FlowyDiagram extends LitElement {
     private blocks = Array<Block>();
 
     /**
+     * [traverseBlocks description]
+     *
+     * @param   {number}  id  [id description]
+     * @return  {[type]}      [return description]
+     */
+    *traverseBlocks( id: number ):Generator<Block,void, unknown> {
+
+        console.log( this.blocks )
+        const _this = this
+
+        function *findDirectChildren( id: number ):Generator<Block,void, unknown> { 
+            const ch = _this.blocks.filter( b => b.parent === id )
+
+            for( let c of ch ) {
+                yield c
+                yield* findDirectChildren(c.id) 
+            }
+        }
+
+        const b = this.blocks.find( b => b.id === id )
+        if( !b ) return 
+
+        yield b
+        yield* findDirectChildren( id )
+    }
+
+    /**
      * [getDataBlockFromElement description]
      *
      * @param   {HTMLElement}  elem  [elem description]
@@ -1293,7 +1320,6 @@ export class FlowyDiagram extends LitElement {
             this.moveBlock( this.dragCtx )
 
         }
-
 
         document.addEventListener("mousedown", beginDragHandler);
         document.addEventListener("touchstart", beginDragHandler);
