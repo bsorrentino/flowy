@@ -1351,16 +1351,32 @@ export class FlowyDiagram extends LitElement {
 
         })
 
-        document.addEventListener('drag', (event) => {
+        document.addEventListener('drag', (event:DragEvent) => {
             const target = event.target as HTMLElement
             console.debug(`drag: ${target.id}`)
+
+            // moveBlockHandler(event)
         })
-
-
+        
         document.addEventListener('dragend', (event) => {
             const target = event.target as HTMLElement
             console.debug(`dragend: ${target.id}`)
         })
+
+        /* events fired on the drop targets */
+        this.addEventListener( 'dragover', (event) => { 
+            const target = event.target as HTMLElement
+            console.debug(`dragover: ${target.id}`)
+        })
+        this.addEventListener('dragenter', (event) => { 
+            const target = event.target as HTMLElement
+            console.debug(`dragenter: ${target.id}`)
+        })
+        this.addEventListener('dragleave', (event) => { 
+            const target = event.target as HTMLElement
+            console.debug(`dragleave: ${target.id}`)
+        })
+
 
         // /* events fired on the drop targets */
         // document.addEventListener( 'dragover', (event) => { 
