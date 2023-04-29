@@ -1161,29 +1161,30 @@ export class FlowyDiagram extends LitElement {
 
     private addBlockElement( ctx: Pick<DragContext,  'element' | 'rearrange' > ):void {
 
-        const { element: drag } = ctx
+        const { element } = ctx
 
-        if( !drag ) throw 'drag element not valid!'
+        if( !element ) throw 'element not valid!'
 
-        this.canvas_div.appendChild(drag)
+        this.canvas_div.appendChild(element)
 
-        drag.addEventListener('click', (e) => {
+        element.addEventListener('click', (e) => {
 
             // guard 
             const skip = ( ctx.rearrange /* && drag.classList.contains('dragging')*/ )
 
-            drag.classList.remove(DRAGGING_CSS_CLASS)
+            element.classList.remove(DRAGGING_CSS_CLASS)
             ctx.rearrange = false
 
             if( skip ) return
 
             const event = new CustomEvent<HTMLElement>('blockSelected', {
-                detail: drag
+                detail: element
             })
             this.dispatchEvent(event)
     
         })
 
+ 
     }
 
     removeSelection( ctx: Pick<DragContext, 'element'> ): void {
@@ -1332,6 +1333,43 @@ export class FlowyDiagram extends LitElement {
 
         document.addEventListener("mouseup", endDragHandler, false);
         document.addEventListener("touchend", endDragHandler, false);
+
+        // document.addEventListener('drag', (event) => {
+        //     const target = event.target as HTMLElement
+        //     console.debug(`drag: ${target.id}`)
+        // })
+
+        document.addEventListener('dragstart', (event) => {
+            const target = event.target as HTMLElement
+            console.debug(`dragstart: ${target.id}`)
+        })
+
+        // document.addEventListener('dragend', (event) => {
+        //     const target = event.target as HTMLElement
+        //     console.debug(`dragend: ${target.id}`)
+        // })
+
+        // /* events fired on the drop targets */
+        // document.addEventListener( 'dragover', (event) => { 
+        //     const target = event.target as HTMLElement
+        //     console.debug(`dragover: ${target.id}`)
+        // })
+
+        // document.addEventListener('dragenter', (event) => { 
+        //     const target = event.target as HTMLElement
+        //     console.debug(`dragenter: ${target.id}`)
+        // })
+
+        // document.addEventListener('dragleave', (event) => { 
+        //     const target = event.target as HTMLElement
+        //     console.debug(`dragleave: ${target.id}`)
+        // })
+
+        // document.addEventListener('drop', (event) => { 
+        //     const target = event.target as HTMLElement
+        //     console.debug(`drop: ${target.id}`)
+        // })
+
     }
 
 }

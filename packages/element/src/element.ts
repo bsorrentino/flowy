@@ -137,6 +137,8 @@ const _addElement = ( diagram: FlowyDiagram, target:HTMLElement, parent:HTMLElem
         </div>
         `
     
+    
+    target.setAttribute('draggable', 'true')
     target.innerHTML = '' // delete children
 
     render( content, target )
@@ -146,7 +148,7 @@ const _addElement = ( diagram: FlowyDiagram, target:HTMLElement, parent:HTMLElem
 
 const  _createTemplate = ( value:number, image_url:URL, title:string, description:string ) => 
     html`
-    <div class="blockelem create-flowy noselect" blockelemtype="${value}">
+    <div class="blockelem create-flowy noselect" blockelemtype="${value}" draggable="true">
         <div class="grabme">
             <img src="${grabme_img}">
         </div>

@@ -10,7 +10,7 @@ const CONDITION_TEST_TYPE = `${CONDITION_TYPE}.test`
 export const  createConditionTemplates = () => 
     [
         html`
-        <div class="blockelem create-flowy noselect" blockelemtype="${CONDITION_TYPE}">
+        <div class="blockelem create-flowy noselect" blockelemtype="${CONDITION_TYPE}" draggable="true">
             <div class="grabme">
                 <img src="${grabme_img}">
             </div>
@@ -116,6 +116,7 @@ const addConditionTestElement = ( diagram:FlowyDiagram, target:HTMLElement, pare
             <div class='blockyinfo'>condition branch</div>
         </div>
         `
+    target.setAttribute('draggable', 'false')    
     target.innerHTML = '' // delete children
     render( content, target )
 
@@ -142,7 +143,7 @@ const addConditionElement = (diagram:FlowyDiagram, target:HTMLElement, parent?: 
             <div class='blockyinfo'>condition element</div>
         </div>
         `
-
+    target.setAttribute('draggable', 'true')        
     target.innerHTML = '' // delete children
     render( content, target )
 
