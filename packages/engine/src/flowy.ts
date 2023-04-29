@@ -1322,32 +1322,45 @@ export class FlowyDiagram extends LitElement {
 
         }
 
-        document.addEventListener("mousedown", beginDragHandler);
-        document.addEventListener("touchstart", beginDragHandler);
+        // document.addEventListener("mousedown", beginDragHandler);
+        // document.addEventListener("touchstart", beginDragHandler);
 
-        document.addEventListener("touchstart", touchBlockHandler, false);
-        document.addEventListener("mouseup",    touchBlockHandler, false);
-        document.addEventListener("mousedown",  touchBlockHandler, false);
+        // document.addEventListener("touchstart", touchBlockHandler, false);
+        // document.addEventListener("mouseup",    touchBlockHandler, false);
+        // document.addEventListener("mousedown",  touchBlockHandler, false);
+       
         document.addEventListener("mousemove",  moveBlockHandler, false);
         document.addEventListener("touchmove",  moveBlockHandler, false);
 
         document.addEventListener("mouseup", endDragHandler, false);
         document.addEventListener("touchend", endDragHandler, false);
 
-        // document.addEventListener('drag', (event) => {
-        //     const target = event.target as HTMLElement
-        //     console.debug(`drag: ${target.id}`)
-        // })
-
-        document.addEventListener('dragstart', (event) => {
+        document.addEventListener('dragstart', (event:DragEvent) => {
             const target = event.target as HTMLElement
             console.debug(`dragstart: ${target.id}`)
+
+            beginDragHandler(event)
+
         })
 
-        // document.addEventListener('dragend', (event) => {
-        //     const target = event.target as HTMLElement
-        //     console.debug(`dragend: ${target.id}`)
-        // })
+        document.addEventListener('dragstart', (event:DragEvent) => {
+            const target = event.target as HTMLElement
+            console.debug(`dragstart: ${target.id}`)
+
+            touchBlockHandler(event)
+
+        })
+
+        document.addEventListener('drag', (event) => {
+            const target = event.target as HTMLElement
+            console.debug(`drag: ${target.id}`)
+        })
+
+
+        document.addEventListener('dragend', (event) => {
+            const target = event.target as HTMLElement
+            console.debug(`dragend: ${target.id}`)
+        })
 
         // /* events fired on the drop targets */
         // document.addEventListener( 'dragover', (event) => { 
@@ -1365,10 +1378,6 @@ export class FlowyDiagram extends LitElement {
         //     console.debug(`dragleave: ${target.id}`)
         // })
 
-        // document.addEventListener('drop', (event) => { 
-        //     const target = event.target as HTMLElement
-        //     console.debug(`drop: ${target.id}`)
-        // })
 
     }
 
