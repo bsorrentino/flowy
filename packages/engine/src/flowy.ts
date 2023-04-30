@@ -537,44 +537,9 @@ export class FlowyDiagram extends LitElement {
         ctx.blockstemp = [];
     }
 
-    private startDragBlock( item: HTMLElement, ctx: DragContext ) {
+    private dragStartBlock( item: HTMLElement, ctx: DragContext ) {
 
-        const { canvas_div } = this
-        const { position } = window.getComputedStyle(canvas_div)
-
-        if (position == "absolute" || position == "fixed") {
-
-            const { left, top } =  canvas_div.getBoundingClientRect()
-            ctx.absx = left;
-            ctx.absy = top;
-        }
-            
-        ctx.original = item
-
-        const newNode = item.cloneNode(true) as HTMLElement;
-
-        item.classList.add(DRAGNOW_CSS_CLASS);
-        newNode.classList.add(BLOCK_CSS_CLASS);
-        newNode.classList.remove(CREATE_BLOCK_CSS_CLASS);
-
-        newNode.setAttribute( 'id', this.nexBlockId )
-        document.body.appendChild(newNode);
-        
-        ctx.element = newNode
-
-        this.dispatchTemplateGrabbed(item);
-
-        ctx.element.classList.add(DRAGGING_CSS_CLASS);
-
-        ctx.active = true;
-
-        const { left , top } = item.getBoundingClientRect()
-
-        ctx.dragx = ctx.mouse_x - left
-        ctx.dragy = ctx.mouse_y - top
-
-        ctx.element.style.left = ctx.mouse_x - ctx.dragx + 'px'
-        ctx.element.style.top = ctx.mouse_y - ctx.dragy + 'px'
+        throw 'method not implemented yet!'
 
     }
 
@@ -954,7 +919,7 @@ export class FlowyDiagram extends LitElement {
                 } 
     
                 // START DRAG BLOCK
-                this.startDragBlock( template, ctx )
+                this.dragStartBlock( template, ctx )
         
                 // this.endDragBlock( ctx )
                 if( !ctx.element ) {
@@ -1228,29 +1193,80 @@ export class FlowyDiagram extends LitElement {
         if( this.#loaded ) return 
         this.#loaded = true
 
-        const beginDragHandler = (event:UIEvent) => {
 
-            if ('targetTouches' in event && event.targetTouches) {
+        const dragstartHandler = (event: DragEvent) => {
 
-                const { clientX, clientY } = (<TouchEvent>event).changedTouches[0]
-                this.dragCtx.mouse_x = clientX
-                this.dragCtx.mouse_y = clientY
-            
-            } else {
+            const { clientX, clientY } = event 
+            // this.dragCtx.mouse_x = clientX
+            // this.dragCtx.mouse_y = clientY
 
-                const { clientX, clientY } = event as MouseEvent
-                this.dragCtx.mouse_x = clientX
-                this.dragCtx.mouse_y = clientY
-            }
+            this.dragCtx.dragblock = false;
 
             const target = event.target as HTMLElement 
 
             const item = target.closest(".create-flowy") as HTMLElement
 
-            if ( item && !isRightClick(event) ) {
+            if ( item /*  && !isRightClick(event)  */ ) {
 
-                this.startDragBlock( item, this.dragCtx )
+                this.dragCtx.active = true;
+
+                const { canvas_div } = this
+
+                const { position } = window.getComputedStyle(canvas_div)
+        
+                if (position == "absolute" || position == "fixed") {
+        
+                    const { left, top } =  canvas_div.getBoundingClientRect()
+                    this.dragCtx.absx = left;
+                    this.dragCtx.absy = top;
+                }
+                
+                this.dragCtx.original = item
+        
+                // const newNode = item.cloneNode(true) as HTMLElement;
+        
+                item.classList.add(DRAGNOW_CSS_CLASS);
+                // newNode.classList.add(BLOCK_CSS_CLASS);
+                // newNode.classList.remove(CREATE_BLOCK_CSS_CLASS);
+        
+                // newNode.setAttribute( 'id', this.nexBlockId )
+                // document.body.appendChild(newNode);
+                
+                // ctx.element = newNode
+        
+                this.dispatchTemplateGrabbed(item);
+        
+                // ctx.element.classList.add(DRAGGING_CSS_CLASS);
+        
+                const { left , top } = item.getBoundingClientRect()
+        
+                this.dragCtx.dragx = clientX - left
+                this.dragCtx.dragy = clientY - top
+        
+                // ctx.element.style.left = ctx.mouse_x - ctx.dragx + 'px'
+                // ctx.element.style.top = ctx.mouse_y - ctx.dragy + 'px'
+        
+                return
             }
+    
+            if (hasParentClass(target, BLOCK_CSS_CLASS)) {
+
+                const theblock = target.closest('.block') as HTMLElement | null 
+                
+                if ( !this.dragCtx.active && !this.dragCtx.rearrange ) {
+    
+                        this.dragCtx.dragblock  = true;
+                        this.dragCtx.element    = theblock
+    
+                        if( theblock ) {
+                            this.dragCtx.dragx = this.dragCtx.mouse_x - (theblock.getBoundingClientRect().left + window.scrollX)
+                            this.dragCtx.dragy = this.dragCtx.mouse_y - (theblock.getBoundingClientRect().top + window.scrollY)
+                        }
+                }
+    
+            }
+
+    
         }
 
         const endDragHandler = (event:UIEvent) => {
@@ -1260,41 +1276,6 @@ export class FlowyDiagram extends LitElement {
 
         }
 
-        const touchBlockHandler = (event: UIEvent) => {
-
-            this.dragCtx.dragblock = false;
-
-            const target = event.target as HTMLElement
-
-            if (!hasParentClass(target, BLOCK_CSS_CLASS)) return
-
-            const theblock = target.closest('.block') as HTMLElement | null 
-
-            if ('targetTouches' in event && event.targetTouches) { 
-                const { clientX, clientY } = (<TouchEvent>event).changedTouches[0]
-                this.dragCtx.mouse_x = clientX;
-                this.dragCtx.mouse_y = clientY;
-            } 
-            else {
-                const { clientX, clientY } = event as MouseEvent
-                this.dragCtx.mouse_x = clientX;
-                this.dragCtx.mouse_y = clientY;
-            }
-            
-            if (event.type !== 'mouseup' && 
-                !isRightClick(event) && 
-                !this.dragCtx.active && 
-                !this.dragCtx.rearrange) {
-
-                    this.dragCtx.dragblock  = true;
-                    this.dragCtx.element    = theblock
-
-                    if( theblock ) {
-                        this.dragCtx.dragx = this.dragCtx.mouse_x - (theblock.getBoundingClientRect().left + window.scrollX)
-                        this.dragCtx.dragy = this.dragCtx.mouse_y - (theblock.getBoundingClientRect().top + window.scrollY)
-                    }
-            }
-        }
 
         const moveBlockHandler = (event:UIEvent) => {
 
@@ -1345,8 +1326,8 @@ export class FlowyDiagram extends LitElement {
                 console.debug(`dragstart: ${target.id}`)
     
                 event.dataTransfer?.setData("text/html", "test") // enable drop event
-                // beginDragHandler(event)
-                // touchBlockHandler(event)
+
+                dragstartHandler(event)
     
             })
             
@@ -1400,7 +1381,28 @@ export class FlowyDiagram extends LitElement {
             const target = event.target as HTMLElement
             console.debug(`drop: ${target.id}`)
 
-            event.preventDefault();
+            event.preventDefault()
+
+            if( this.dragCtx.original ) {
+
+                const { clientX, clientY } = event 
+                const { left, top } = getComputedStyle(this)
+                
+                const newNode = this.dragCtx.original.cloneNode(true) as HTMLElement;
+                newNode.setAttribute( 'id', this.nexBlockId )
+
+                // [How to make a draggable element stay at the new position when dropped ](https://stackoverflow.com/a/57438497/521197)
+                newNode.style.position = 'absolute';
+                newNode.style.left  = clientX - parseInt(left) - this.dragCtx.dragx + 'px'
+                newNode.style.top   = clientY - parseInt(top)  - this.dragCtx.dragy + 'px'
+                
+                canvas_div.appendChild( newNode )
+
+
+            }
+
+        // document.body.appendChild(newNode);
+ 
         })
 
     }
