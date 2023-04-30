@@ -3,19 +3,82 @@
 <head>
     <!-- Primary Meta Tags -->
 <title>Drag & drop sample</title>
-<link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700&display=swap" rel="stylesheet">
-<link href='styles.css' rel='stylesheet' type='text/css'>
-<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
-<script type="module" src="src/main.ts"></script>   
+<meta name="title" content="Flowy - The simple flowchart engine">
+<meta name="description" content="Flowy is a minimal javascript library to create flowcharts. Use it for automation software, mind mapping tools, programming platforms, and more. Made by Alyssa X.">
+
+<!-- Open Graph / Facebook -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://alyssax.com/x/flowy">
+<meta property="og:title" content="Flowy - The simple flowchart engine">
+<meta property="og:description" content="Flowy is a minimal javascript library to create flowcharts. Use it for automation software, mind mapping tools, programming platforms, and more. Made by Alyssa X.">
+<meta property="og:image" content="https://alyssax.com/x/assets/meta.png">
+
+<!-- Twitter -->
+<meta property="twitter:card" content="summary_large_image">
+<meta property="twitter:url" content="https://alyssax.com/x/flowy">
+<meta property="twitter:site" content="alyssaxuu">
+<meta property="twitter:title" content="Flowy - The simple flowchart engine">
+<meta property="twitter:description" content="Flowy is a minimal javascript library to create flowcharts. Use it for automation software, mind mapping tools, programming platforms, and more. Made by Alyssa X.">
+<meta property="twitter:image" content="https://alyssax.com/x/assets/meta.png">
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700&display=swap" rel="stylesheet">
+    <link href='styles.css' rel='stylesheet' type='text/css'>
+    <!--link href='flowy.min.css' rel='stylesheet' type='text/css'-->
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <script type="module" src="src/main.ts"></script>   
 </head>
 <body>
-    <div>
-        <div id="block0" draggable="true">BLOCK 0</div>
-        <div id="block1" draggable="true">BLOCK 1</div>
-        <div id="block2" draggable="true">BLOCK 2</div>
-        <div id="block3" draggable="true">BLOCK 3</div>
-
+    <div id="navigation">
+        <div id="leftside">
+            <div id="details">
+            <div id="back"><img src="assets/arrow.svg"></div>
+            <div id="names">
+                <p id="title">Your automation pipeline</p>
+                <p id="subtitle">Marketing automation</p>
+            </div>
+        </div>            
+        </div>
+        <div id="centerswitch">
+            <div id="leftswitch">Diagram view</div>
+            <div id="rightswitch">Code editor</div>
+        </div>
+        <div id="buttonsright">
+            <div id="discard">Discard</div>
+            <div id="publish">Publish to site</div>
+        </div>
     </div>
-    <drop-target id="target"></drop-target>
+    <div id="leftcard">
+        <div id="closecard">
+            <img src="assets/closeleft.svg">
+        </div>
+        <p id="header">Blocks</p>
+        <div id="search">
+            <img src="assets/search.svg">
+            <input type="text" placeholder="Search blocks">
+        </div>
+        <div id="subnav">
+            <div id="triggers" class="navactive side">Triggers</div>
+            <div id="actions" class="navdisabled side">Actions</div>
+            <div id="loggers" class="navdisabled side">Loggers</div>
+        </div>
+        <div id="blocklist">
+            <div class="noselect" id="block0" draggable="true">
+                <div>BLOCK 0</div>
+            </div>
+            <div id="block1" draggable="true">BLOCK 1</div>
+            <div id="block2" draggable="true">BLOCK 2</div>
+            <div id="block3" draggable="true">BLOCK 3</div>
+        </div>
+        <div id="footer">
+            <a href="https://github.com/bsorrentino/flowy/" target="_blank">GitHub</a>
+            <span>·</span>
+            <a href="" target="_blank">Twitter</a>
+            <span>·</span>
+                refactored <p>by</p> bsorrentino
+        </div>
+    </div>
+    <div id="propwrap">
+    </div>
+    <drop-target id="target"></drop-target>    
+    </div>
 </body>
 </html>

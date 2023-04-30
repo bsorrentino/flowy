@@ -1,4 +1,4 @@
-import {render, html } from 'lit-html';
+import {render, html } from 'lit';
 import type { FlowyDiagram } from 'flowy-engine'
 import { numBlockLinked, isBlockAlreadyLinked, blockType } from './element-utils'
 

@@ -4,7 +4,7 @@
   "description": "",
   "private": true,
   "scripts": {
-    "start": "lerna run start",
+    "start": "lerna run start --scope=flowy-demo",
     "build": "lerna run build",
     "doc": "lerna run doc",
     "demo": "http-server packages/demo -c-1"

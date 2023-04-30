@@ -1,0 +1,41 @@
+body, html {
+    margin: 0px;
+    padding: 0px;
+    overflow: hidden;
+    background-image: url(assets/tile.png);
+    background-repeat: repeat;
+    background-size: 30px 30px;
+    background-color: #FBFBFB;
+    height: 100%;
+}
+
+#target {
+    width: 500px;
+    height: 500px;
+}
+
+#canvas {
+    background-color: yellowgreen;
+    width: 500px;
+    height: 500px;
+}
+
+.noselect {
+-webkit-touch-callout: none; /* iOS Safari */
+    -webkit-user-select: none; /* Safari */
+    -khtml-user-select: none; /* Konqueror HTML */
+        -moz-user-select: none; /* Old versions of Firefox */
+        -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version, currently
+                                supported by Chrome, Opera and Firefox */
+}
+@media only screen and (max-width: 832px) {
+    #centerswitch {
+        display: none;
+    }
+}
+@media only screen and (max-width: 560px) {
+    #names {
+        display: none;
+    }   
+}

@@ -1,4 +1,4 @@
-import {LitElement, html, render}   from 'lit';
+import {LitElement, html,css, render}   from 'lit';
 import {query}                      from 'lit/decorators/query.js';
 import {customElement, property}    from 'lit/decorators.js';
 
@@ -163,7 +163,8 @@ export interface FlowyDiagram extends HTMLElement {
      */
     addEventListener(type: 'moving', listener: (ev: CustomEvent<{ source:HTMLElement, target: number }>) => void, capture?: boolean): void
     
-    addEventListener(type: string, listener: EventListener | EventListenerObject, useCapture?: boolean): void
+    addEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+    addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
 }
 
 
@@ -176,11 +177,15 @@ export interface FlowyDiagram extends HTMLElement {
 export class FlowyDiagram extends LitElement {
 
     // css seems doesn't work without shadow dom
-    // static styles = css`
-    // p {
-    //   color: green;
-    // }
-    // `
+    static styles = css`
+    #canvas {
+        position: absolute;
+        width: 100%;
+        height: 100%
+        z-index: 0;
+        overflow: auto;
+    }
+    `
 
     @query('#canvas')
     private canvas_div!: HTMLCanvasElement;
@@ -196,8 +201,6 @@ export class FlowyDiagram extends LitElement {
 
     @property( { type: 'number'} )
     spacing_y = 80
-
-    private load!: () => void
 
     /**
      * [showIndicator description]
@@ -1203,7 +1206,8 @@ export class FlowyDiagram extends LitElement {
      * @see [How to create LitElement without Shadow DOM?](https://stackoverflow.com/a/55213037/521197)
      */
     createRenderRoot() {
-        return this;
+        // return super.createRenderRoot()
+        return this
     }
 
     connectedCallback() {
@@ -1217,18 +1221,12 @@ export class FlowyDiagram extends LitElement {
             </div>`
     }
  
-    /**
-     * lit component lifecycle
-     * 
-     */
-    protected firstUpdated() {
+    #loaded = false
 
-        const { canvas_div, spacing_x:paddingx, spacing_y:paddingy } = this;
-        
-        if (window.getComputedStyle(canvas_div).position == "absolute" || window.getComputedStyle(canvas_div).position == "fixed") {
-            this.dragCtx.absx = canvas_div.getBoundingClientRect().left;
-            this.dragCtx.absy = canvas_div.getBoundingClientRect().top;
-        }
+    load() {
+
+        if( this.#loaded ) return 
+        this.#loaded = true
 
         const beginDragHandler = (event:UIEvent) => {
 
@@ -1328,72 +1326,82 @@ export class FlowyDiagram extends LitElement {
         // document.addEventListener("touchstart", touchBlockHandler, false);
         // document.addEventListener("mouseup",    touchBlockHandler, false);
         // document.addEventListener("mousedown",  touchBlockHandler, false);
-       
+ 
+        /*
         document.addEventListener("mousemove",  moveBlockHandler, false);
         document.addEventListener("touchmove",  moveBlockHandler, false);
+        
 
         document.addEventListener("mouseup", endDragHandler, false);
         document.addEventListener("touchend", endDragHandler, false);
+        */
 
-        document.addEventListener('dragstart', (event:DragEvent) => {
-            const target = event.target as HTMLElement
-            console.debug(`dragstart: ${target.id}`)
+        [...document.querySelectorAll("[draggable]")].forEach( e => {
 
-            beginDragHandler(event)
+            const element = e as HTMLElement
+    
+            element.addEventListener("dragstart", (event:DragEvent) => {
+                const target = event.target as HTMLElement
+                console.debug(`dragstart: ${target.id}`)
+    
+                event.dataTransfer?.setData("text/html", "test") // enable drop event
+                // beginDragHandler(event)
+                // touchBlockHandler(event)
+    
+            })
+            
+            element.addEventListener("dragend", (event:DragEvent) => {
+                const target = event.target as HTMLElement
+                console.debug(`dragend: ${target.id}`)
 
-        })
+                // endDragHandler(event)
+            })
 
-        document.addEventListener('dragstart', (event:DragEvent) => {
-            const target = event.target as HTMLElement
-            console.debug(`dragstart: ${target.id}`)
-
-            touchBlockHandler(event)
-
-        })
-
-        document.addEventListener('drag', (event:DragEvent) => {
-            const target = event.target as HTMLElement
-            console.debug(`drag: ${target.id}`)
-
-            // moveBlockHandler(event)
-        })
+            element.addEventListener("drag", (event:DragEvent) => {
+                const target = event.target as HTMLElement
+                console.debug(`drag: ${target.id}`)
+    
+                // moveBlockHandler(event)
+            })
+    
+        })        
         
-        document.addEventListener('dragend', (event) => {
-            const target = event.target as HTMLElement
-            console.debug(`dragend: ${target.id}`)
-        })
+    }
+    
+    /**
+     * lit component lifecycle
+     * 
+     */
+    protected firstUpdated() {
+
+        const { canvas_div, spacing_x:paddingx, spacing_y:paddingy } = this;
+        
+        if (window.getComputedStyle(canvas_div).position == "absolute" || window.getComputedStyle(canvas_div).position == "fixed") {
+            this.dragCtx.absx = canvas_div.getBoundingClientRect().left;
+            this.dragCtx.absy = canvas_div.getBoundingClientRect().top;
+        }
 
         /* events fired on the drop targets */
-        this.addEventListener( 'dragover', (event) => { 
+        this.addEventListener( 'dragover', (event:DragEvent) => { 
             const target = event.target as HTMLElement
             console.debug(`dragover: ${target.id}`)
+
+            event.preventDefault()
         })
-        this.addEventListener('dragenter', (event) => { 
+        this.addEventListener('dragenter', (event:DragEvent) => { 
             const target = event.target as HTMLElement
             console.debug(`dragenter: ${target.id}`)
         })
-        this.addEventListener('dragleave', (event) => { 
+        this.addEventListener('dragleave', (event:DragEvent) => { 
             const target = event.target as HTMLElement
             console.debug(`dragleave: ${target.id}`)
         })
+        this.addEventListener('drop', (event:DragEvent) => { 
+            const target = event.target as HTMLElement
+            console.debug(`drop: ${target.id}`)
 
-
-        // /* events fired on the drop targets */
-        // document.addEventListener( 'dragover', (event) => { 
-        //     const target = event.target as HTMLElement
-        //     console.debug(`dragover: ${target.id}`)
-        // })
-
-        // document.addEventListener('dragenter', (event) => { 
-        //     const target = event.target as HTMLElement
-        //     console.debug(`dragenter: ${target.id}`)
-        // })
-
-        // document.addEventListener('dragleave', (event) => { 
-        //     const target = event.target as HTMLElement
-        //     console.debug(`dragleave: ${target.id}`)
-        // })
-
+            event.preventDefault();
+        })
 
     }
 

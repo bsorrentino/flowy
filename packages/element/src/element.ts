@@ -1,5 +1,5 @@
-import {render,html} from 'lit-html';
-import { unsafeHTML } from 'lit-html/directives/unsafe-html';
+import {render,html} from 'lit';
+import { unsafeHTML } from 'lit/directives/unsafe-html';
 import type { FlowyDiagram } from 'flowy-engine'
 import { blockType, isBlockAlreadyLinked } from './element-utils'
 import * as condition from './condition'
@@ -82,7 +82,7 @@ export function initElement( diagram:FlowyDiagram, templates_container:HTMLEleme
 
     _addTemplates( templates_container )
 
-
+    diagram.load()
 }
 
 

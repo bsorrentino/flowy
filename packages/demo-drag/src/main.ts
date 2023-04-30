@@ -8,12 +8,12 @@ import {customElement, property}    from 'lit/decorators.js';
  * @tag &lt;flowy-diagram&gt;
  */
 @customElement('drop-target')
-export class FlowyDiagram extends LitElement {
+export class DropTarget extends LitElement {
     static styles = css`
     #canvas {
       background-color: green;
-      width: 500px;
-      height: 500px
+      width: 100%;
+      height: 100%
     }s
     `
 
@@ -87,44 +87,50 @@ export class FlowyDiagram extends LitElement {
         this.addEventListener("dragleave", dragleave);
 
     }
+
+    load() {
+        const dragstart = ( e:DragEvent ) => {
+
+            console.debug( 'dragstart', e.target)
+            e.dataTransfer?.setData("text/html", "test")
+    
+            const target = e.target as HTMLElement
+            target.setAttribute("dragging", "")
+        }
+    
+        const drag = ( e:DragEvent ) => {
+    
+            console.debug( 'drag', e.target)
+        }
+    
+        const dragend = ( e:DragEvent ) => {
+    
+            console.debug( 'dragend', e.target)
+    
+            const target = e.target as HTMLElement
+            target.removeAttribute("dragging");
+    
+    
+        }
+    
+    
+        [...document.querySelectorAll("[draggable]")].forEach( e => {
+    
+            const element = e as HTMLElement
+    
+            element.addEventListener("dragstart", dragstart )
+            element.addEventListener("dragend", dragend )
+            element.addEventListener("drag", drag )
+    
+        })
+    
+    }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
 
+    const target = document.getElementById('target') as DropTarget
 
-    const dragstart = ( e:DragEvent ) => {
-
-        console.debug( 'dragstart', e.target)
-        e.dataTransfer?.setData("text/html", "test")
-
-        const target = e.target as HTMLElement
-        target.setAttribute("dragging", "")
-    }
-
-    const drag = ( e:DragEvent ) => {
-
-        console.debug( 'drag', e.target)
-    }
-
-    const dragend = ( e:DragEvent ) => {
-
-        console.debug( 'dragend', e.target)
-
-        const target = e.target as HTMLElement
-        target.removeAttribute("dragging");
-
-
-    }
-
-
-    [...document.querySelectorAll("[draggable]")].forEach( e => {
-
-        const element = e as HTMLElement
-
-        element.addEventListener("dragstart", dragstart )
-        element.addEventListener("dragend", dragend )
-        element.addEventListener("drag", drag )
-
-    })
+    target.load()
 
 })
