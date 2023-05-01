@@ -50,3 +50,8 @@
     z-index: 0;
     overflow: auto;
 }
+
+.dragover  {
+    border: 2px solid #217CE8 !important;
+    box-shadow: 0px 4px 30px rgba(22, 33, 74, 0.08);
+}
