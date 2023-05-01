@@ -10,7 +10,7 @@ const CONDITION_TEST_TYPE = `${CONDITION_TYPE}.test`
 export const  createConditionTemplates = () => 
     [
         html`
-        <div class="blockelem create-flowy noselect" blockelemtype="${CONDITION_TYPE}" draggable="true">
+        <div class="blockelem template noselect" blockelemtype="${CONDITION_TYPE}" draggable="true">
             <div class="grabme">
                 <img src="${grabme_img}">
             </div>
@@ -27,7 +27,7 @@ export const  createConditionTemplates = () =>
         </div>`,
 /*
         html`
-        <div class="blockelem create-flowy noselect" blockelemtype="${CONDITION_TEST_TYPE}">
+        <div class="template noselect" blockelemtype="${CONDITION_TEST_TYPE}">
             <div class="grabme">
                 <img src="${grabme_img}">
             </div>
@@ -73,7 +73,7 @@ const conditionTestTemplate = () =>  {
 
     const target = document.createElement( 'div' )
     target.classList.add( 'blockelem' )
-    target.classList.add( 'create-flowy' )
+    target.classList.add( 'template' )
     target.classList.add( 'noselect' )
     target.setAttribute( 'blockelemtype', CONDITION_TEST_TYPE)
 

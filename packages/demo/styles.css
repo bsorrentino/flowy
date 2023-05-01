@@ -271,26 +271,6 @@ body, html {
     margin-left: 5px;
     margin-right: 5px;
 }
-.blockelem:first-child {
-    margin-top: 20px
-}
-.blockelem {
-    padding-top: 10px;
-    width: 318px;
-    border: 1px solid transparent;
-    transition-property: box-shadow, height;
-    transition-duration: .2s;
-    transition-timing-function: cubic-bezier(.05,.03,.35,1);
-    border-radius: 5px;
-    box-shadow: 0px 0px 30px rgba(22, 33, 74, 0);
-    box-sizing: border-box;
-}
-.blockelem:hover {
-    box-shadow: 0px 4px 30px rgba(22, 33, 74, 0.08);
-    border-radius: 5px;
-    background-color: #FFF;
-    cursor: pointer;
-}
 #blocklist {
     height: calc(100% - 220px);
     overflow: auto;

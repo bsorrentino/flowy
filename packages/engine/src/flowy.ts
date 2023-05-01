@@ -5,8 +5,8 @@ import {customElement, property}    from 'lit/decorators.js';
 import './flowy.css'
 
 const BLOCK_CSS_CLASS           = 'block'
+const TEMPLATE_CSS_CLASS        = 'template'
 const DRAGNOW_CSS_CLASS         = 'dragnow'
-const CREATE_BLOCK_CSS_CLASS    = 'create-flowy'
 const DRAGGING_CSS_CLASS        = 'dragging'
 const ARROW_CLSS_CLASS          = 'arrowblock'
 const INVISIBLE_CSS_CLASS       = 'invisible'
@@ -68,10 +68,8 @@ const createOrUpdateArrow = ( id:number|HTMLElement, x:number, y:number, padding
 }
 
 function hasParentClass(element: HTMLElement, classname: string): boolean {
-    if (element.className) {
-        if (element.className.split(' ').indexOf(classname) >= 0) return true;
-    }
-    return (element.parentNode !== null) && hasParentClass(element.parentNode as HTMLElement, classname);
+    if (element.className && element.classList.contains(classname) ) return true
+    return (element.parentNode !== null ) && hasParentClass(element.parentNode as HTMLElement, classname);
 }
 
 
@@ -118,6 +116,14 @@ export interface FlowyDiagram extends HTMLElement {
      * @param capture 
      */
     addEventListener(type: 'templateGrabbed', listener: (ev: CustomEvent<HTMLElement>) => void, capture?: boolean): void
+    /**
+     * event raised when start dragging template over diagram 
+     * 
+     * @param type 'templateReleased'
+     * @param listener (ev: CustomEvent<{ template:HTMLElement, block:HTMLElement }>) => void
+     * @param capture 
+     */
+    addEventListener(type: 'templateDropped', listener: (ev: CustomEvent<{ template:HTMLElement, block:HTMLElement }>) => void, capture?: boolean): void
     /**
      * event raised when start dragging template over diagram 
      * 
@@ -556,7 +562,7 @@ export class FlowyDiagram extends LitElement {
     
         ctx.dragblock = false;
 
-        this.dispatchTemplateReleased( original );
+        // this.dispatchTemplateReleased( original );
         
         this.hideIndicator()
         
@@ -961,20 +967,6 @@ export class FlowyDiagram extends LitElement {
         this.canvas_div.innerHTML = "<div class='indicator invisible'></div>";
     }
 
-    private dispatchTemplateGrabbed(block: HTMLElement) {
-        const event = new CustomEvent<HTMLElement>('templateGrabbed', {
-            detail: block
-        })
-        this.dispatchEvent(event)
-    }
-
-    private dispatchTemplateReleased( block: HTMLElement ) {
-        const event = new CustomEvent<HTMLElement>('templateReleased', {
-            detail: block
-        })
-        this.dispatchEvent(event)
-    }
-
     private dispatchBlockSnapping(drag: HTMLElement, first: boolean, parent?: HTMLElement) {
         const event = new CustomEvent<{target: HTMLElement, parent?: HTMLElement}>('snapping', {
             detail: { target:drag, parent: parent },
@@ -1186,88 +1178,14 @@ export class FlowyDiagram extends LitElement {
             </div>`
     }
  
+
+
     #loaded = false
 
     load() {
 
         if( this.#loaded ) return 
         this.#loaded = true
-
-
-        const dragstartHandler = (event: DragEvent) => {
-
-            const { clientX, clientY } = event 
-            // this.dragCtx.mouse_x = clientX
-            // this.dragCtx.mouse_y = clientY
-
-            this.dragCtx.dragblock = false;
-
-            const target = event.target as HTMLElement 
-
-            const item = target.closest(".create-flowy") as HTMLElement
-
-            if ( item /*  && !isRightClick(event)  */ ) {
-
-                this.dragCtx.active = true;
-
-                const { canvas_div } = this
-
-                const { position } = window.getComputedStyle(canvas_div)
-        
-                if (position == "absolute" || position == "fixed") {
-        
-                    const { left, top } =  canvas_div.getBoundingClientRect()
-                    this.dragCtx.absx = left;
-                    this.dragCtx.absy = top;
-                }
-                
-                this.dragCtx.original = item
-        
-                // const newNode = item.cloneNode(true) as HTMLElement;
-        
-                item.classList.add(DRAGNOW_CSS_CLASS);
-                // newNode.classList.add(BLOCK_CSS_CLASS);
-                // newNode.classList.remove(CREATE_BLOCK_CSS_CLASS);
-        
-                // newNode.setAttribute( 'id', this.nexBlockId )
-                // document.body.appendChild(newNode);
-                
-                // ctx.element = newNode
-        
-                this.dispatchTemplateGrabbed(item);
-        
-                // ctx.element.classList.add(DRAGGING_CSS_CLASS);
-        
-                const { left , top } = item.getBoundingClientRect()
-        
-                this.dragCtx.dragx = clientX - left
-                this.dragCtx.dragy = clientY - top
-        
-                // ctx.element.style.left = ctx.mouse_x - ctx.dragx + 'px'
-                // ctx.element.style.top = ctx.mouse_y - ctx.dragy + 'px'
-        
-                return
-            }
-    
-            if (hasParentClass(target, BLOCK_CSS_CLASS)) {
-
-                const theblock = target.closest('.block') as HTMLElement | null 
-                
-                if ( !this.dragCtx.active && !this.dragCtx.rearrange ) {
-    
-                        this.dragCtx.dragblock  = true;
-                        this.dragCtx.element    = theblock
-    
-                        if( theblock ) {
-                            this.dragCtx.dragx = this.dragCtx.mouse_x - (theblock.getBoundingClientRect().left + window.scrollX)
-                            this.dragCtx.dragy = this.dragCtx.mouse_y - (theblock.getBoundingClientRect().top + window.scrollY)
-                        }
-                }
-    
-            }
-
-    
-        }
 
         const endDragHandler = (event:UIEvent) => {
             if( isRightClick(event) ) return // GUARD
@@ -1317,94 +1235,265 @@ export class FlowyDiagram extends LitElement {
         document.addEventListener("touchend", endDragHandler, false);
         */
 
+
+        const dragstart = (event:DragEvent) => {
+            const target = event.target as HTMLElement
+
+            const isTemplate = hasParentClass(target, TEMPLATE_CSS_CLASS)
+            const isBlock = hasParentClass(target, BLOCK_CSS_CLASS)
+
+            console.debug(`dragstart: ${target.id}`, `isTemplate: ${isTemplate}`, `isBlock: ${isBlock}` )
+
+            event.dataTransfer?.setData("text/html", "test") // enable drop event
+
+            if( isTemplate ) {
+                this.dragTemplateManager.start( event )
+            }
+
+        }
+
+        const dragend = (event:DragEvent) => {
+            const target = event.target as HTMLElement
+
+            const isTemplate = hasParentClass(target, TEMPLATE_CSS_CLASS)
+            const isBlock = hasParentClass(target, BLOCK_CSS_CLASS)
+
+            console.debug(`dragend: ${target.id}`, `isTemplate: ${isTemplate}`, `isBlock: ${isBlock}`)
+
+            if( isTemplate ) {
+                this.dragTemplateManager.end()
+            }
+        }
+
         [...document.querySelectorAll("[draggable]")].forEach( e => {
 
             const element = e as HTMLElement
-    
-            element.addEventListener("dragstart", (event:DragEvent) => {
-                const target = event.target as HTMLElement
-                console.debug(`dragstart: ${target.id}`)
-    
-                event.dataTransfer?.setData("text/html", "test") // enable drop event
-
-                dragstartHandler(event)
-    
-            })
             
-            element.addEventListener("dragend", (event:DragEvent) => {
-                const target = event.target as HTMLElement
-                console.debug(`dragend: ${target.id}`)
+            element.addEventListener("dragstart", dragstart)
+            
+            element.addEventListener("dragend", dragend )
 
-                // endDragHandler(event)
-            })
+            // element.addEventListener("drag", (event:DragEvent) => {
+            //     const target = event.target as HTMLElement
+            //     console.debug(`drag: ${target.id}`)
+    
+            //     moveBlockHandler(event)
+            // })
 
-            element.addEventListener("drag", (event:DragEvent) => {
-                const target = event.target as HTMLElement
-                console.debug(`drag: ${target.id}`)
-    
-                // moveBlockHandler(event)
-            })
-    
         })        
         
     }
     
+
     /**
      * lit component lifecycle
      * 
      */
     protected firstUpdated() {
+        const { canvas_div } = this 
+        const { position } = window.getComputedStyle(canvas_div)
 
-        const { canvas_div, spacing_x:paddingx, spacing_y:paddingy } = this;
-        
-        if (window.getComputedStyle(canvas_div).position == "absolute" || window.getComputedStyle(canvas_div).position == "fixed") {
-            this.dragCtx.absx = canvas_div.getBoundingClientRect().left;
-            this.dragCtx.absy = canvas_div.getBoundingClientRect().top;
+        if (position == 'absolute' || position == 'fixed') {
+
+            const { left, top } = canvas_div.getBoundingClientRect()
+
+            this.dragBlockManager.absX = left 
+            this.dragBlockManager.absY = top 
+
+            this.dragTemplateManager.absX = left 
+            this.dragTemplateManager.absY = top 
+
         }
 
         /* events fired on the drop targets */
         this.addEventListener( 'dragover', (event:DragEvent) => { 
             const target = event.target as HTMLElement
-            console.debug(`dragover: ${target.id}`)
+            console.debug(`dragover: '${target.id}'`)
 
             event.preventDefault()
+
         })
+
         this.addEventListener('dragenter', (event:DragEvent) => { 
             const target = event.target as HTMLElement
-            console.debug(`dragenter: ${target.id}`)
+            console.debug(`dragenter: '${target.id}'`)
         })
+
         this.addEventListener('dragleave', (event:DragEvent) => { 
             const target = event.target as HTMLElement
-            console.debug(`dragleave: ${target.id}`)
+            console.debug(`dragleave: '${target.id}'`)
         })
+
         this.addEventListener('drop', (event:DragEvent) => { 
+
             const target = event.target as HTMLElement
-            console.debug(`drop: ${target.id}`)
+            console.debug(`drop: '${target.id}'`)
 
             event.preventDefault()
 
-            if( this.dragCtx.original ) {
-
-                const { clientX, clientY } = event 
-                const { left, top } = getComputedStyle(this)
-                
-                const newNode = this.dragCtx.original.cloneNode(true) as HTMLElement;
-                newNode.setAttribute( 'id', this.nexBlockId )
-
-                // [How to make a draggable element stay at the new position when dropped ](https://stackoverflow.com/a/57438497/521197)
-                newNode.style.position = 'absolute';
-                newNode.style.left  = clientX - parseInt(left) - this.dragCtx.dragx + 'px'
-                newNode.style.top   = clientY - parseInt(top)  - this.dragCtx.dragy + 'px'
-                
-                canvas_div.appendChild( newNode )
-
-
-            }
-
-        // document.body.appendChild(newNode);
+            this.dragTemplateManager.drop( event )
  
         })
 
+        
     }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    //
+    // REARRANGE BLOCK
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////////
+
+    // [create nested classes in TypeScript](https://stackoverflow.com/a/45244695/521197)
+    private dragBlockManager = new class {
+
+        private dragX = 0 
+        private dragY = 0 
+        absX = 0 
+        absY = 0 
+        private element: HTMLElement|null = null
+
+        constructor(public superThis: FlowyDiagram) {    
+        }
+
+        start( event:{ target:any, clientX: number, clientY: number} ) {
+
+            const { target, clientX, clientY } = event 
+
+            if (!hasParentClass(target, BLOCK_CSS_CLASS)) return // GUARD
+
+            const theblock = target.closest('.block') as HTMLElement | null 
+                
+            if( theblock ) {
+
+                this.element = theblock
+                this.dragX = clientX - (theblock.getBoundingClientRect().left + window.scrollX)
+                this.dragY = clientY - (theblock.getBoundingClientRect().top + window.scrollY)
+            }
+        }
+    }(this)
+
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    //
+    // DRAG TEMPLATE
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////////
+
+    // [create nested classes in TypeScript](https://stackoverflow.com/a/45244695/521197)
+    private dragTemplateManager = new class {
+
+        private dragX = 0 
+        private dragY = 0 
+        absX = 0 
+        absY = 0 
+        private element: HTMLElement|null = null
+        private template: HTMLElement|null = null
+
+        constructor(public superThis: FlowyDiagram) {
+        }
+
+        start( event:{ target:any, clientX: number, clientY: number} ) {
+
+            const { target, clientX, clientY } = event as { target:HTMLElement, clientX: number, clientY: number }
+
+            const template = target.closest( `.${TEMPLATE_CSS_CLASS}` ) as HTMLElement|null
+
+            if ( !template  ) return // GUARD
+
+            const { canvas_div } = this.superThis
+
+            const { position } = window.getComputedStyle(canvas_div)
+    
+            if (position == "absolute" || position == "fixed") {
+    
+                const { left, top } =  canvas_div.getBoundingClientRect()
+                this.absX = left;
+                this.absY = top;
+            }
+            
+            const element = template.cloneNode(true) as HTMLElement
+            element.setAttribute( 'id', this.superThis.nexBlockId )
+            element.classList.remove(TEMPLATE_CSS_CLASS)
+            element.classList.add(BLOCK_CSS_CLASS)
+    
+            template.classList.add(DRAGNOW_CSS_CLASS)
+            template.classList.add(DRAGGING_CSS_CLASS);
+        
+            const { left , top } = template.getBoundingClientRect()
+    
+            this.dragX = clientX - left
+            this.dragY = clientY - top
+
+            this.element = element
+            this.template = template
+
+            this.dispatchTemplateGrabbed();
+    
+        }
+
+        drop(position:{ clientX: number, clientY: number} ):void {
+
+            const { element } = this 
+    
+            if( !element ) return // GUARD
+    
+            const { clientX, clientY } = position 
+            const { left, top } = getComputedStyle(this.superThis)
+            const { canvas_div } = this.superThis
+
+            // [How to make a draggable element stay at the new position when dropped ](https://stackoverflow.com/a/57438497/521197)
+            element.style.position = 'absolute';
+            element.style.left  = clientX - parseInt(left) - this.dragX + 'px'
+            element.style.top   = clientY - parseInt(top)  - this.dragY + 'px'
+            
+            canvas_div.appendChild( element )
+
+            this.dispatchTemplateDropped()
+        }
+
+        end() {
+
+            if( this.element ) { 
+                this.element.classList.remove(DRAGNOW_CSS_CLASS)
+                this.element = null 
+            }
+
+            if( this.template ) {
+                this.template.classList.remove(DRAGNOW_CSS_CLASS)
+                this.template.classList.remove(DRAGGING_CSS_CLASS);
+    
+                this.dispatchTemplateReleased()
+
+                this.template = null
+            }    
+
+        }
+    
+        private dispatchTemplateGrabbed() {
+            if( !this.template ) return // GUARD
+            const event = new CustomEvent<HTMLElement>('templateGrabbed', {
+                detail: this.template
+            })
+            this.superThis.dispatchEvent(event)
+        }
+    
+        private dispatchTemplateDropped() {
+            if( !this.template ) return // GUARD
+            if( !this.element ) return // GUARD
+            const event = new CustomEvent<{ template:HTMLElement, block: HTMLElement }>('templateDropped', {
+                detail: { template: this.template, block: this.element }
+            })
+            this.superThis.dispatchEvent(event)
+        }
+
+        private dispatchTemplateReleased() {
+            if( !this.template ) return // GUARD
+            const event = new CustomEvent<HTMLElement>('templateReleased', {
+                detail: this.template
+            })
+            this.superThis.dispatchEvent(event)
+        }
+    
+    }(this)
 
 }
